@@ -1,0 +1,15 @@
+name: project-silke-zoospore-tracking
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - tqdm
+  - ca-certificates
+  - openssl
+  - scikit-image
+  - pip
+  - pip:
+    - python-keystoneclient
+    - python-swiftclient
+    - aicsimageio
+    - aicsimageio[nd2]
