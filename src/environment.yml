@@ -9,6 +9,7 @@ dependencies:
   - scikit-image
   - pip
   - pip:
+    - python_dotenv
     - python-keystoneclient
     - python-swiftclient
     - aicsimageio
