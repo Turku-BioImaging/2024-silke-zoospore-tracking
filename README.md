@@ -1,1 +1,6 @@
-# project-silke-tracking
+# Zoospore Tracking
+
+
+## Experiment Protocol
+Light intensity levels are changed many times during a single experimental run, with phases (step up, step down, and adaptation). Numbers in brackets are codes for the light level.
+![image](https://github.com/Turku-BioImaging/project-silke-zoospore-tracking/assets/11444749/e32b3513-d502-4ef9-b054-af4afdb87987)
