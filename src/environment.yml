@@ -2,9 +2,11 @@ name: project-silke-zoospore-tracking
 channels:
   - conda-forge
 dependencies:
+  - cudatoolkit
   - python=3.9
   - tqdm
   - ca-certificates
+  - numba
   - openssl
   - scikit-image
   - pip
@@ -14,3 +16,4 @@ dependencies:
     - python-swiftclient
     - aicsimageio
     - aicsimageio[nd2]
+  - zarr
