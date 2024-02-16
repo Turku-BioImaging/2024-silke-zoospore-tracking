@@ -6,6 +6,7 @@ from skimage import draw, color
 import argparse
 import pandas as pd
 from tqdm import tqdm
+from scipy.spatial import ConvexHull
 
 ZARR_PATH = os.path.join(
     os.path.dirname(__file__), "..", "data", "silke-zoospore-data.zarr"
@@ -71,20 +72,25 @@ if __name__ == "__main__":
 
             tp.quiet()
             pred = tp.predict.NearestVelocityPredict()
-            t = pred.link_df(f, search_range=8, memory=15)
+            t = pred.link_df(f, search_range=8, memory=20)
             t = tp.filter_stubs(t, 25)
-            t = t[t["mass"] <= 1200]
-            t = t[t["size"] <= 1.9]
+            t = t[t["mass"] <= 900]
+            t = t[t["size"] <= 1.8]
 
-            # Filter out particles with little or no movement
-            t["displacement"] = np.sqrt(
-                t.groupby("particle")["x"].diff() ** 2
-                + t.groupby("particle")["y"].diff() ** 2
-            )
-            total_displacement = t.groupby("particle")["displacement"].sum()
-            threshold = 25
-            particles_to_keep = total_displacement[total_displacement > threshold].index
+            groups = t.groupby("particle")
+            area_covered = pd.DataFrame()
+            for name, group in groups:
+                if len(group) >= 3:
+                    hull = ConvexHull(group[["x", "y"]])
+                    area = hull.volume
+                    area_covered = pd.concat([area_covered, pd.DataFrame({'particle': [name], 'area': [area]})])
+
+            area_covered.set_index("particle", inplace=True)
+            threshold = 5
+            particles_to_keep = area_covered[area_covered["area"] > threshold].index
+
             t = t[t["particle"].isin(particles_to_keep)]
+            # print(area_covered.describe())
 
             color_dict = {
                 particle: tuple(np.random.randint(0, 256, 3))
@@ -122,10 +128,13 @@ if __name__ == "__main__":
                     "predictor": "nearest velocity",
                     "initial_velocity": 0.5,
                     "search_range": 8,
-                    "memory": 15,
+                    "memory": 20,
+                },
+                "filtering_parameters": {
                     "mass_threshold": "<=630",
                     "size_threshold": "<=1.8",
-                },
+                    "displacement_area": 5,
+                }
             }
 
             overlay_dataset.attrs.update(attrs)
