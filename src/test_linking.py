@@ -83,7 +83,12 @@ if __name__ == "__main__":
                 if len(group) >= 3:
                     hull = ConvexHull(group[["x", "y"]])
                     area = hull.volume
-                    area_covered = pd.concat([area_covered, pd.DataFrame({'particle': [name], 'area': [area]})])
+                    area_covered = pd.concat(
+                        [
+                            area_covered,
+                            pd.DataFrame({"particle": [name], "area": [area]}),
+                        ]
+                    )
 
             area_covered.set_index("particle", inplace=True)
             threshold = 5
@@ -91,6 +96,7 @@ if __name__ == "__main__":
 
             t = t[t["particle"].isin(particles_to_keep)]
             # print(area_covered.describe())
+            t.to_csv(os.path.join(TRACKING_DATA_DIR, exp, video, "tracking.csv"))
 
             color_dict = {
                 particle: tuple(np.random.randint(0, 256, 3))
@@ -134,7 +140,7 @@ if __name__ == "__main__":
                     "mass_threshold": "<=630",
                     "size_threshold": "<=1.8",
                     "displacement_area": 5,
-                }
+                },
             }
 
             overlay_dataset.attrs.update(attrs)
