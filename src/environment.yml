@@ -3,17 +3,19 @@ channels:
   - conda-forge
 dependencies:
   - cudatoolkit
-  - python=3.9
-  - tqdm
   - ca-certificates
   - numba
   - openssl
-  - scikit-image
   - pip
   - pip:
-    - python_dotenv
-    - python-keystoneclient
-    - python-swiftclient
-    - aicsimageio
-    - aicsimageio[nd2]
+      - python_dotenv
+      - python-keystoneclient
+      - python-swiftclient
+      - aicsimageio
+      - aicsimageio[nd2]
+      - https://github.com/soft-matter/trackpy/archive/refs/tags/v0.6.2rc1.zip
+  - python=3.9
+  - scikit-image
+  - seaborn
+  - tqdm
   - zarr
