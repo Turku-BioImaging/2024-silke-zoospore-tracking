@@ -95,7 +95,6 @@ if __name__ == "__main__":
             particles_to_keep = area_covered[area_covered["area"] > threshold].index
 
             t = t[t["particle"].isin(particles_to_keep)]
-            # print(area_covered.describe())
             t.to_csv(os.path.join(TRACKING_DATA_DIR, exp, video, "tracking.csv"))
 
             color_dict = {
