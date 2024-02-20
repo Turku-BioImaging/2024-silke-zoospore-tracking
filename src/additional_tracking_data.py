@@ -11,9 +11,9 @@ TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
 )
 
-CLASSIFICATION_DATA_PATH = os.path.join(
-    os.path.dirname(__file__), "sample_classification.csv"
-)
+# CLASSIFICATION_DATA_PATH = os.path.join(
+#     os.path.dirname(__file__), "sample_classification.csv"
+# )
 
 PIXEL_SIZE = 1.473175577212496
 
@@ -90,7 +90,7 @@ def calculate_speeds(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    classification_df = pd.read_csv(CLASSIFICATION_DATA_PATH)
+    # classification_df = pd.read_csv(CLASSIFICATION_DATA_PATH)
 
     with open(
         os.path.join(os.path.dirname(__file__), "light_intensity_codes.json"), "r"
@@ -126,4 +126,14 @@ if __name__ == "__main__":
                 os.path.join(TRACKING_DATA_DIR, exp, v, "tracking.csv"), index=False
             )
 
-        
+            frame_interval = df["frame_interval"].iloc[0]
+            fps = 1 / frame_interval
+
+            if not df.empty:
+                im = tp.imsd(df, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
+                im.to_csv(os.path.join(TRACKING_DATA_DIR, exp, v, "imsd.csv"))
+
+                em = tp.emsd(df, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
+                em.to_csv(os.path.join(TRACKING_DATA_DIR, exp, v, "emsd.csv"))
+            else:
+                print(f"Empty dataframe for {exp}/{v}")
