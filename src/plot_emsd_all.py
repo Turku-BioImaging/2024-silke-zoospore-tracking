@@ -1,14 +1,10 @@
 import os
+
+import constants
 import matplotlib.pyplot as plt
 import pandas as pd
-import zarr
-import json
-import argparse
-import constants
-from tqdm import tqdm
 import seaborn as sns
 from joblib import Parallel, delayed
-
 
 TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
