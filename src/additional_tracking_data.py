@@ -1,21 +1,20 @@
-import numpy as np
-import os
-import trackpy as tp
-import pandas as pd
-from glob import glob
-import re
 import json
+import os
+import re
+
+import constants
+import numpy as np
+import pandas as pd
+import trackpy as tp
 from tqdm import tqdm
 
 TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
 )
 
-# CLASSIFICATION_DATA_PATH = os.path.join(
-#     os.path.dirname(__file__), "sample_classification.csv"
-# )
-
-PIXEL_SIZE = 1.473175577212496
+PIXEL_SIZE = constants.PIXEL_SIZE
+FRAME_INTERVAL_REGULAR = constants.FRAME_INTERVAL_REGULAR
+FRAME_INTERVAL_LOW_LIGHT = constants.FRAME_INTERVAL_LOW_LIGHT
 
 
 def classify_sample(sample: str, experiment: str) -> dict:
@@ -59,9 +58,11 @@ def classify_sample(sample: str, experiment: str) -> dict:
 
     # get frame interval
     if step_end == 5:
-        frame_interval = 0.11237
+        # frame_interval = 0.11237
+        frame_interval = FRAME_INTERVAL_LOW_LIGHT
     else:
-        frame_interval = 0.02729
+        # frame_interval = 0.02729
+        frame_interval = FRAME_INTERVAL_REGULAR
 
     return {
         "experiment": experiment,
