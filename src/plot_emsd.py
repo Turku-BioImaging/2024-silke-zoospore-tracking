@@ -7,12 +7,13 @@ import json
 import pandas as pd
 import seaborn as sns
 import argparse
+import constants
 
 TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
 )
 
-PIXEL_SIZE = 1.473175577212496
+PIXEL_SIZE = constants.PIXEL_SIZE
 
 
 def extract_test_number(s):
@@ -90,7 +91,14 @@ if __name__ == "__main__":
     g.map(lineplot, "lag_time", "msd")
     g.figure.tight_layout(w_pad=1)
     g.figure.suptitle(exp, fontsize=16)
-    g.figure.text(0.5, 0.95, 'Ensemble Mean Squared Displacement', ha='center', va='center', fontsize=10)
+    g.figure.text(
+        0.5,
+        0.95,
+        "Ensemble Mean Squared Displacement",
+        ha="center",
+        va="center",
+        fontsize=10,
+    )
 
     g.figure.subplots_adjust(top=0.89)
     plt.rc("font", size=7)
