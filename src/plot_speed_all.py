@@ -1,5 +1,5 @@
 import os
-
+import constants
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -14,15 +14,28 @@ def read_data(exp, sample):
     track_df = pd.read_csv(
         os.path.join(TRACKING_DATA_DIR, exp, sample, "tracking.csv"), low_memory=False
     )
-    emsd_df = pd.read_csv(os.path.join(TRACKING_DATA_DIR, exp, sample, "emsd.csv"))
+
+    mean_speed_per_frame_df = (
+        track_df.groupby("frame")["speed_(um/s)"].mean().reset_index()
+    )
+
+    median_speed_per_frame_df = (
+        track_df.groupby("frame")["speed_(um/s)"].median().reset_index()
+    )
+
+    mean_speed_per_frame_df["lag_time"] = (
+        mean_speed_per_frame_df["frame"] * track_df["frame_interval"].iloc[0]
+    )
 
     data_dict = {
         "experiment": exp,
         "test": track_df["test"].iloc[0],
         "step_init_abs": track_df["step_init_abs"].iloc[0],
         "step_end_abs": track_df["step_end_abs"].iloc[0],
-        "lag_time": emsd_df["lagt"],
-        "msd": emsd_df["msd"],
+        # "frame": mean_speed_per_frame_df["frame"],
+        "lag_time": mean_speed_per_frame_df["lag_time"],
+        "mean_speed": mean_speed_per_frame_df["speed_(um/s)"],
+        "median_speed": median_speed_per_frame_df["speed_(um/s)"],
     }
 
     return data_dict
@@ -59,6 +72,7 @@ if __name__ == "__main__":
         axis=1,
     )
 
+    # plot mean particle speed
     g = sns.FacetGrid(
         exp_df,
         col="test",
@@ -68,16 +82,30 @@ if __name__ == "__main__":
         sharex=True,
         sharey=True,
     )
-    g.map(sns.lineplot, "lag_time", "msd")
-    g.set_ylabels(r"MSD ($\mu m^2$)")
-    g.add_legend(
-        # bbox_to_anchor=(0, -0.2),
-        # loc="upper left",
-        borderaxespad=0.0,
-        fontsize="small",
-        ncol=1,
-    )
-    g.figure.suptitle("Ensemble Mean Squared Displacement")
+
+    g.map(sns.lineplot, "lag_time", "mean_speed").set(ylim=(0, 200))
+    g.set_ylabels(r"Mean Speed ($\mu m/s$)")
+    g.add_legend(borderaxespad=0.0, fontsize="x-small", ncol=1)
+    g.figure.suptitle("Mean particle speed")
     plt.subplots_adjust(top=0.9)
     plt.show()
-    g.figure.savefig("emsd_all.png", dpi=300)
+    g.figure.savefig("mean_speed_all.png", dpi=300)
+
+    # plot median particle speed
+    g = sns.FacetGrid(
+        exp_df,
+        col="test",
+        hue="experiment",
+        height=1.6,
+        col_wrap=10,
+        sharex=True,
+        sharey=True,
+    )
+
+    g.map(sns.lineplot, "lag_time", "median_speed")
+    g.set_ylabels(r"Median Speed ($\mu m/s$)")
+    g.add_legend(borderaxespad=0.0, fontsize="x-small", ncol=1)
+    g.figure.suptitle("Median particle speed")
+    plt.subplots_adjust(top=0.9)
+    plt.show()
+    g.figure.savefig("median_speed_all.png", dpi=300)
