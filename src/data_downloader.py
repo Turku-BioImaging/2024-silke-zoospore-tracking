@@ -21,9 +21,9 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "nd2")
 # TIFF_DIR = os.path.join(os.path.dirname(__file__), "data", "tiff")
 TIFF_DIR = os.path.join("/", "mnt", "f", "silke-convert-temp")
 
-EXCLUSION_LIST = [
-    "FastTimeLaps_exp_02_StauChy1_230120_rep3/FastTimeLaps_exp_test1_1_from0.nd2"
-]
+# EXCLUSION_LIST = [
+#     "FastTimeLaps_exp_02_StauChy1_230120_rep3/FastTimeLaps_exp_test1_1_from0.nd2"
+# ]
 
 
 # Configure CSC Allas connection
@@ -73,13 +73,8 @@ def convert_nd2_to_tiff(p):
     if os.path.isfile(os.path.join(TIFF_DIR, dir_path, fname)):
         return
 
-    # do not process files in exclusion list
-    for exclusion in EXCLUSION_LIST:
-        if exclusion in p:
-            return
-
     if not os.path.exists(os.path.join(TIFF_DIR, dir_path)):
-        os.makedirs(os.path.join(TIFF_DIR, dir_path))
+        os.makedirs(os.path.join(TIFF_DIR, dir_path), exist_ok=True)
 
     img = AICSImage(p)
     img = np.squeeze(img.data, axis=(1, 2))
