@@ -4,13 +4,11 @@ channels:
 dependencies:
   - cudatoolkit
   - ca-certificates
+  - dask
+  - joblib
   - numba
   - openssl
-  - pip
   - pip:
-      - python_dotenv
-      - python-keystoneclient
-      - python-swiftclient
       - aicsimageio
       - aicsimageio[nd2]
       - https://github.com/soft-matter/trackpy/archive/refs/tags/v0.6.2rc1.zip
