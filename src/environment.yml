@@ -12,7 +12,8 @@ dependencies:
   - pip:
       - aicsimageio
       - aicsimageio[nd2]
-      - https://github.com/soft-matter/trackpy/archive/refs/tags/v0.6.2rc1.zip
+      # - https://github.com/soft-matter/trackpy/archive/refs/tags/v0.6.2rc1.zip
+      - trackpy==0.6.4
   - python=3.10
   - scikit-image
   - seaborn
