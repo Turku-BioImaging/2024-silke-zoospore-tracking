@@ -31,13 +31,35 @@ def __draw_detection_overlay(df, frame, color_keys: dict):
     return rgb
 
 
+def __validate_linking_dataset(root: Group, replicate: str, experiment: str) -> bool:
+    if replicate not in root:
+        return False
+    if experiment not in root[replicate]:
+        return False
+    if "linking" not in root[replicate][experiment]:
+        return False
+
+    dataset = root[f"{replicate}/{experiment}/linking"]
+    if "author" not in dataset.attrs:
+        return False
+    if dataset.attrs.get("author") != "Turku BioImaging":
+        return False
+
+    return True
+
+
 def link_detections(
     replicate: str,
     experiment: str,
     zarr_path: str = ZARR_PATH,
-    save_tracking_data: bool = True,
+    overwrite: bool = False,
 ) -> None:
     root: Group = zarr.open_group(zarr_path, mode="a")
+
+    valid_linking = __validate_linking_dataset(root, replicate, experiment)
+
+    if valid_linking and not overwrite:
+        return
 
     np.random.seed(874)
 
