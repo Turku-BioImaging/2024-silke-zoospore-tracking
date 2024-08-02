@@ -32,7 +32,7 @@ def detect_objects(
     replicate: str,
     experiment: str,
     zarr_path: str = ZARR_PATH,
-    save_tracking_data: bool = True,
+    save_detection_data: bool = True,
 ) -> None:
     root: Group = zarr.open_group(zarr_path, mode="a")
 
@@ -44,9 +44,10 @@ def detect_objects(
     assert raw_da.dtype == "uint8"
 
     frames = raw_da[:, 2, :, :].compute()
+    tp.quiet()
     f = tp.batch(frames, 7, minmass=100, maxsize=12)
 
-    if save_tracking_data is True:
+    if save_detection_data is True:
         tracking_dir_path = os.path.join(TRACKING_DATA_DIR, replicate, experiment)
         if not os.path.isdir(tracking_dir_path):
             os.makedirs(tracking_dir_path)
