@@ -90,7 +90,10 @@ def link_detections(
     particles_to_keep = area_covered_df[area_covered_df["area"] > threshold].index
 
     t = t[t["particle"].isin(particles_to_keep)]
-    t.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, experiment, "tracking.csv"))
+    t.to_csv(
+        os.path.join(TRACKING_DATA_DIR, replicate, experiment, "tracking.csv"),
+        escapechar="\\",
+    )
 
     # create tracking overlay image
     color_dict = {
