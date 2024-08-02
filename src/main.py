@@ -1,6 +1,7 @@
 import os
 import zarr
 from detect import detect_objects
+from link import link_detections
 from tqdm import tqdm
 
 ZARR_PATH = os.path.join(
@@ -21,8 +22,13 @@ def main():
         for experiment in root[replicate].keys()
     ]
 
+    # run object detection for possible zoospores
     for replicate, experiment in tqdm(exp_data):
         detect_objects(replicate, experiment, ZARR_PATH)
+
+    # link detections (tracking)
+    for replicate, experiment in tqdm(exp_data):
+        link_detections(replicate, experiment, ZARR_PATH)
 
 
 if __name__ == "__main__":
