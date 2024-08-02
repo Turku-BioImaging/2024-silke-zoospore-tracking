@@ -28,11 +28,33 @@ def __draw_detection_overlay(df, frame):
     return rgb
 
 
+def __validate_detection_dataset(root: Group, replicate: str, experiment: str) -> bool:
+    if replicate not in root:
+        return False
+
+    if experiment not in root[replicate]:
+        return False
+
+    if "detection" not in root[replicate][experiment]:
+        return False
+
+    dataset = root[f"{replicate}/{experiment}/detection"]
+
+    if "author" not in dataset.attrs:
+        return False
+
+    if dataset.attrs.get("author") != "Turku BioImaging":
+        return False
+
+    return True
+
+
 def detect_objects(
     replicate: str,
     experiment: str,
     zarr_path: str = ZARR_PATH,
     save_detection_data: bool = True,
+    overwrite: bool = False,
 ) -> None:
     root: Group = zarr.open_group(zarr_path, mode="a")
 
@@ -42,6 +64,11 @@ def detect_objects(
     assert raw_da.shape[2] == 712
     assert raw_da.shape[3] == 712
     assert raw_da.dtype == "uint8"
+
+    valid_detection = __validate_detection_dataset(root, replicate, experiment)
+
+    if valid_detection and not overwrite:
+        return
 
     frames = raw_da[:, 2, :, :].compute()
     tp.quiet()
