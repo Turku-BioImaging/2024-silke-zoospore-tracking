@@ -8,6 +8,7 @@ dependencies:
   - joblib
   - numba
   - openssl
+  - pandas
   - pip:
       - aicsimageio
       - aicsimageio[nd2]
