@@ -20,17 +20,15 @@ FRAME_INTERVAL_REGULAR = constants.FRAME_INTERVAL_REGULAR
 FRAME_INTERVAL_LOW_LIGHT = constants.FRAME_INTERVAL_LOW_LIGHT
 
 
-def classify_sample(
-    replicate: str, experiment: str, light_intensity_codes: dict
-) -> dict:
+def classify_sample(replicate: str, sample: str, light_intensity_codes: dict) -> dict:
     # Get code of init light level
-    index = experiment.find("_from")
-    assert index != -1, f"Invalid experiment name: {experiment}"
-    step_init = int(experiment[index + 5])
+    index = sample.find("_from")
+    assert index != -1, f"Invalid sample name: {sample}"
+    step_init = int(sample[index + 5])
     step_init_abs = light_intensity_codes[str(step_init)]
 
     # Get code of end light level
-    step_end = int(experiment[index - 1])
+    step_end = int(sample[index - 1])
     step_end_abs = light_intensity_codes[str(step_end)]
 
     # get step type
@@ -47,19 +45,19 @@ def classify_sample(
     elif "StauChy1" in replicate:
         species = "StauChy1"
     else:
-        raise ValueError(f"Could not infer species name: {replicate}/{experiment}")
+        raise ValueError(f"Could not infer species name: {replicate}/{sample}")
 
     # get replicate
     index = replicate.find("rep")
     replicate_number = int(replicate[index + 3])
 
     # get test number
-    match = re.search("test\d{1,2}", experiment)
+    match = re.search("test\d{1,2}", sample)
     if match:
         digits = match.group()[4:]
         test = int(digits)
     else:
-        raise ValueError(f"Could not infer test number: {replicate}/{experiment}")
+        raise ValueError(f"Could not infer test number: {replicate}/{sample}")
 
     # get frame interval
     if step_end == 5:
@@ -71,7 +69,7 @@ def classify_sample(
 
     return {
         "replicate": replicate,
-        "experiment": experiment,
+        "sample": sample,
         "species": species,
         "replicate_number": replicate_number,
         "test": test,
@@ -125,23 +123,21 @@ def main():
         light_intensity_codes = json.load(f)
 
     tracks_data = [
-        (replicate, experiment)
+        (replicate, sample)
         for replicate in os.listdir(TRACKING_DATA_DIR)
         if os.path.isdir(os.path.join(TRACKING_DATA_DIR, replicate))
-        for experiment in os.listdir(os.path.join(TRACKING_DATA_DIR, replicate))
-        if os.path.isdir(os.path.join(TRACKING_DATA_DIR, replicate, experiment))
+        for sample in os.listdir(os.path.join(TRACKING_DATA_DIR, replicate))
+        if os.path.isdir(os.path.join(TRACKING_DATA_DIR, replicate, sample))
     ]
 
-    def process_tracks_data(replicate, experiment):
+    def process_tracks_data(replicate, sample):
         df = pl.read_csv(
-            os.path.join(TRACKING_DATA_DIR, replicate, experiment, "tracking.csv")
+            os.path.join(TRACKING_DATA_DIR, replicate, sample, "tracking.csv")
         )
         if "Unnamed: 0" in df.columns:
             df = df.drop("Unnamed: 0")
 
-        sample_descriptors = classify_sample(
-            replicate, experiment, light_intensity_codes
-        )
+        sample_descriptors = classify_sample(replicate, sample, light_intensity_codes)
 
         for col_name, value in sample_descriptors.items():
             df = df.with_columns(pl.lit(value).alias(col_name))
@@ -152,16 +148,16 @@ def main():
         fps = 1 / (df["frame_interval"][0])
         df_pandas = df.to_pandas()
         im = tp.imsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-        im.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, experiment, "imsd.csv"))
+        im.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "imsd.csv"))
 
         em = tp.emsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-        em.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, experiment, "emsd.csv"))
+        em.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "emsd.csv"))
 
         # write derived tracking data
         df = df.select(
             [
                 "replicate",
-                "experiment",
+                "sample",
                 "replicate_number",
                 "species",
                 "frame",
@@ -181,9 +177,7 @@ def main():
         )
 
         df.write_csv(
-            os.path.join(
-                TRACKING_DATA_DIR, replicate, experiment, "tracking_derived.csv"
-            )
+            os.path.join(TRACKING_DATA_DIR, replicate, sample, "tracking_derived.csv")
         )
 
     Parallel(n_jobs=-1)(
