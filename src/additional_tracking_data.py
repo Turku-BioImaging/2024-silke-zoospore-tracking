@@ -162,6 +162,8 @@ def main():
                 "species",
                 "frame",
                 "particle",
+                "x",
+                "y",
                 "test",
                 "step_init",
                 "step_end",
