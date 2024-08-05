@@ -4,9 +4,12 @@ import re
 
 import constants
 import numpy as np
+
 import pandas as pd
+import polars as pl
 import trackpy as tp
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
@@ -17,15 +20,17 @@ FRAME_INTERVAL_REGULAR = constants.FRAME_INTERVAL_REGULAR
 FRAME_INTERVAL_LOW_LIGHT = constants.FRAME_INTERVAL_LOW_LIGHT
 
 
-def classify_sample(sample: str, experiment: str) -> dict:
+def classify_sample(
+    replicate: str, experiment: str, light_intensity_codes: dict
+) -> dict:
     # Get code of init light level
-    index = sample.find("_from")
-    assert index != -1, f"Invalid sample name: {sample}"
-    step_init = int(sample[index + 5])
+    index = experiment.find("_from")
+    assert index != -1, f"Invalid experiment name: {experiment}"
+    step_init = int(experiment[index + 5])
     step_init_abs = light_intensity_codes[str(step_init)]
 
     # Get code of end light level
-    step_end = int(sample[index - 1])
+    step_end = int(experiment[index - 1])
     step_end_abs = light_intensity_codes[str(step_end)]
 
     # get step type
@@ -37,24 +42,24 @@ def classify_sample(sample: str, experiment: str) -> dict:
         step_type = "step_down"
 
     # Get species
-    if "AstChy1" in experiment:
+    if "AstChy1" in replicate:
         species = "AstChy1"
-    elif "StauChy1" in experiment:
+    elif "StauChy1" in replicate:
         species = "StauChy1"
     else:
-        raise ValueError(f"Could not infer species name: {experiment}/{sample}")
+        raise ValueError(f"Could not infer species name: {replicate}/{experiment}")
 
     # get replicate
-    index = experiment.find("rep")
-    replicate = int(experiment[index + 3])
+    index = replicate.find("rep")
+    replicate_number = int(replicate[index + 3])
 
     # get test number
-    match = re.search("test\d{1,2}", sample)
+    match = re.search("test\d{1,2}", experiment)
     if match:
         digits = match.group()[4:]
         test = int(digits)
     else:
-        raise ValueError(f"Could not infer test number: {experiment}/{sample}")
+        raise ValueError(f"Could not infer test number: {replicate}/{experiment}")
 
     # get frame interval
     if step_end == 5:
@@ -65,10 +70,10 @@ def classify_sample(sample: str, experiment: str) -> dict:
         frame_interval = FRAME_INTERVAL_REGULAR
 
     return {
-        "experiment": experiment,
-        "sample": sample,
-        "species": species,
         "replicate": replicate,
+        "experiment": experiment,
+        "species": species,
+        "replicate_number": replicate_number,
         "test": test,
         "step_init": step_init,
         "step_end": step_end,
@@ -79,62 +84,113 @@ def classify_sample(sample: str, experiment: str) -> dict:
     }
 
 
-def calculate_speeds(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.sort_values(by=["particle", "frame"])
-    df["dx_(um)"] = df.groupby("particle")["x"].diff() * PIXEL_SIZE
-    df["dy_(um)"] = df.groupby("particle")["y"].diff() * PIXEL_SIZE
+def calculate_speeds(df: pl.DataFrame) -> pl.DataFrame:
+    df = df.sort(["particle", "frame"])
 
-    df["displacement_(um)"] = np.sqrt(df["dx_(um)"] ** 2 + df["dy_(um)"] ** 2)
-    df["speed_(um/s)"] = df["displacement_(um)"] / df["frame_interval"]
+    df = df.with_columns(
+        [
+            pl.col("x").cast(pl.Float64),
+            pl.col("y").cast(pl.Float64),
+        ]
+    )
+
+    df = df.with_columns(
+        [
+            ((pl.col("x") - pl.col("x").shift(1)).over("particle") * PIXEL_SIZE).alias(
+                "dx_(um)"
+            ),
+            ((pl.col("y") - pl.col("y").shift(1)).over("particle") * PIXEL_SIZE).alias(
+                "dy_(um)"
+            ),
+        ]
+    )
+
+    df = df.with_columns(
+        (pl.col("dx_(um)").pow(2) + pl.col("dy_(um)").pow(2))
+        .sqrt()
+        .alias("displacement_(um)"),
+    )
+
+    df = df.with_columns(
+        (pl.col("displacement_(um)") / pl.col("frame_interval")).alias("speed_(um/s)"),
+    )
 
     return df
 
 
-if __name__ == "__main__":
-    # classification_df = pd.read_csv(CLASSIFICATION_DATA_PATH)
-
+def main():
     with open(
         os.path.join(os.path.dirname(__file__), "light_intensity_codes.json"), "r"
     ) as f:
         light_intensity_codes = json.load(f)
 
-    experiments = [
-        dir
-        for dir in os.listdir(TRACKING_DATA_DIR)
-        if os.path.isdir(os.path.join(TRACKING_DATA_DIR, dir))
+    tracks_data = [
+        (replicate, experiment)
+        for replicate in os.listdir(TRACKING_DATA_DIR)
+        if os.path.isdir(os.path.join(TRACKING_DATA_DIR, replicate))
+        for experiment in os.listdir(os.path.join(TRACKING_DATA_DIR, replicate))
+        if os.path.isdir(os.path.join(TRACKING_DATA_DIR, replicate, experiment))
     ]
 
-    for exp in experiments:
-        print(f"Processing {exp}...")
-        video_dirs = [
-            dir
-            for dir in os.listdir(os.path.join(TRACKING_DATA_DIR, exp))
-            if os.path.isdir(os.path.join(TRACKING_DATA_DIR, exp, dir))
-        ]
+    def process_tracks_data(replicate, experiment):
+        df = pl.read_csv(
+            os.path.join(TRACKING_DATA_DIR, replicate, experiment, "tracking.csv")
+        )
+        if "Unnamed: 0" in df.columns:
+            df = df.drop("Unnamed: 0")
 
-        for v in tqdm(video_dirs):
-            df = pd.read_csv(os.path.join(TRACKING_DATA_DIR, exp, v, "tracking.csv"))
+        sample_descriptors = classify_sample(
+            replicate, experiment, light_intensity_codes
+        )
 
-            if "Unnamed: 0" in df.columns:
-                df = df.drop(columns=["Unnamed: 0"])
+        for col_name, value in sample_descriptors.items():
+            df = df.with_columns(pl.lit(value).alias(col_name))
 
-            sample_descriptors = classify_sample(v, exp)
-            for col_name, data in sample_descriptors.items():
-                df[col_name] = data
+        df = calculate_speeds(df)
 
-            df = calculate_speeds(df)
-            df.to_csv(
-                os.path.join(TRACKING_DATA_DIR, exp, v, "tracking.csv"), index=False
+        # write imsd and emsd data
+        fps = 1 / (df["frame_interval"][0])
+        df_pandas = df.to_pandas()
+        im = tp.imsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
+        im.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, experiment, "imsd.csv"))
+
+        em = tp.emsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
+        em.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, experiment, "emsd.csv"))
+
+        # write derived tracking data
+        df = df.select(
+            [
+                "replicate",
+                "experiment",
+                "replicate_number",
+                "species",
+                "frame",
+                "particle",
+                "test",
+                "step_init",
+                "step_end",
+                "step_init_abs",
+                "step_end_abs",
+                "step_type",
+                "frame_interval",
+                "dx_(um)",
+                "dy_(um)",
+                "displacement_(um)",
+                "speed_(um/s)",
+            ]
+        )
+
+        df.write_csv(
+            os.path.join(
+                TRACKING_DATA_DIR, replicate, experiment, "tracking_derived.csv"
             )
+        )
 
-            frame_interval = df["frame_interval"].iloc[0]
-            fps = 1 / frame_interval
+    Parallel(n_jobs=-1)(
+        delayed(process_tracks_data)(replicate, experiment)
+        for replicate, experiment in tqdm(tracks_data)
+    )
 
-            if not df.empty:
-                im = tp.imsd(df, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-                im.to_csv(os.path.join(TRACKING_DATA_DIR, exp, v, "imsd.csv"))
 
-                em = tp.emsd(df, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-                em.to_csv(os.path.join(TRACKING_DATA_DIR, exp, v, "emsd.csv"))
-            else:
-                print(f"Empty dataframe for {exp}/{v}")
+if __name__ == "__main__":
+    main()
