@@ -11,7 +11,7 @@ from tqdm import tqdm
 PIXEL_SIZE = constants.PIXEL_SIZE
 
 TRACKING_DATA_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "data", "tracking_data"
+    os.path.dirname(__file__), "..", "..", "data", "tracking_data"
 )
 
 
