@@ -48,6 +48,18 @@ def __validate_linking_dataset(root: Group, replicate: str, experiment: str) -> 
     return True
 
 
+def __validate_csv(replicate: str, experiment: str) -> bool:
+    try:
+        tracking_path = os.path.join(
+            TRACKING_DATA_DIR, replicate, experiment, "tracking.csv"
+        )
+        df = pd.read_csv(tracking_path)
+        assert len(df) > 0
+        return True
+    except Exception as _:
+        return False
+
+
 def link_detections(
     replicate: str,
     experiment: str,
@@ -57,8 +69,9 @@ def link_detections(
     root: Group = zarr.open_group(zarr_path, mode="a")
 
     valid_linking = __validate_linking_dataset(root, replicate, experiment)
+    valid_csv = __validate_csv(replicate, experiment)
 
-    if valid_linking and not overwrite:
+    if valid_linking and valid_csv and not overwrite:
         return
 
     np.random.seed(874)

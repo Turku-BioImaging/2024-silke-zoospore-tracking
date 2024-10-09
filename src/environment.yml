@@ -9,6 +9,7 @@ dependencies:
   - numba
   - openssl
   - pandas
+  - polars=1.2
   - pip:
       - aicsimageio
       - aicsimageio[nd2]
