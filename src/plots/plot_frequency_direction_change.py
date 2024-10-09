@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 import constants
 
 TRACKING_DATA_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "data", "tracking_data"
+    os.path.dirname(__file__), "..", '..', "data", "tracking_data"
 )
 
 DIRECTION_CHANGE_THRESHOLD = constants.DIRECTION_CHANGE_THRESHOLD
