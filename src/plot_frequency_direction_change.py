@@ -31,11 +31,11 @@ def calculate_freq_direction_change(exp, sample):
             )
 
             angles = np.degrees(angles) % 360
-            freqs = np.sum(np.abs(angles) > DIRECTION_CHANGE_THRESHOLD)
+            direction_changes = np.sum(np.abs(angles) > DIRECTION_CHANGE_THRESHOLD)
             frame_interval = group["frame_interval"].iloc[0]
             total_time = frame_interval * (len(coordinates) - 1)
 
-            freq_per_time = freqs / total_time
+            direction_change_freq = direction_changes / total_time
             freq_direction_change = pd.concat(
                 [
                     freq_direction_change,
@@ -47,7 +47,7 @@ def calculate_freq_direction_change(exp, sample):
                             "step_init_abs": [group["step_init_abs"].iloc[0]],
                             "step_end_abs": [group["step_end_abs"].iloc[0]],
                             "particle": [group["particle"].iloc[0]],
-                            "direction_changes_per_time": [freq_per_time],
+                            "direction_changes_per_time": [direction_change_freq],
                         }
                     ),
                 ]
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     )
 
     g.map(sns.stripplot, "experiment", "direction_changes_per_time")
-    g.set_ylabels("Average direction\nchanges per second")
+    g.set_ylabels("Direction\nchanges per second")
     g.set_xticklabels([])
     g.add_legend(borderaxespad=0, fontsize="x-small", ncol=1)
     g.figure.suptitle("Frequency of direction changes per unit time")
