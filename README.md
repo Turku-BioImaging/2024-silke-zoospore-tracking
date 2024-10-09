@@ -10,3 +10,13 @@ Light intensity levels are changed many times during a single experimental run, 
 
 ## Implemented metrics
 - __Straight-line velocity (VSL)__.  The time-average velocity of the zoospore object along a straight line between its first detected position and its last position.
+
+## Execute image processing
+
+This runs the entire image processing pipeline.
+```
+cd ./src
+python main.py --object-detection \
+    --linking \
+    --metrics
+```
