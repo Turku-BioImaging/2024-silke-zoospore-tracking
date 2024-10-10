@@ -1,5 +1,5 @@
 {
-    "python.analysis.ignore": [
-        "data/"
+    "python.analysis.exclude": [
+        "**/data"
     ]
 }
