@@ -4,6 +4,7 @@ from detect import detect_objects
 from link import link_detections
 from tqdm import tqdm
 from metrics.straight_line_velocity import process_all_data as straight_line_velocity
+from metrics.curvilinear_velocity import process_all_data as curvilinear_velocity
 import argparse
 
 ZARR_PATH = os.path.join(
@@ -17,6 +18,7 @@ def run_object_detection(replicate, experiment):
 
 def calculate_metrics():
     straight_line_velocity()
+    curvilinear_velocity()
 
 
 def main(args):
