@@ -13,6 +13,7 @@ Light intensity levels are changed many times during a single experimental run, 
 - __Mean Squared Displacement (MSD)__.
 - __Straight-line velocity (VSL)__.  The time-average velocity of the zoospore object along a straight line between its first detected position and its last position.
 - __Curvilinear velocity (VCL)__. The time-average velocity of the object along its actual trajectory.
+- __Directionality ratio__. A measure of how straight the overall path of movement is, defined as the ratio of the net displacement to the total path length.
 
 ## Execute image processing
 
