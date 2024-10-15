@@ -71,7 +71,8 @@ def process_all_data():
         )
 
     Parallel(n_jobs=-1)(
-        delayed(process_tracking_data)(td) for td in tqdm(tracking_data)
+        delayed(process_tracking_data)(td)
+        for td in tqdm(tracking_data, desc="Calculating curvilinear velocities")
     )
 
 
