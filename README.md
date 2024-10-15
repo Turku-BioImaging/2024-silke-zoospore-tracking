@@ -10,6 +10,7 @@ Light intensity levels are changed many times during a single experimental run, 
 
 ## Implemented metrics
 - __Straight-line velocity (VSL)__.  The time-average velocity of the zoospore object along a straight line between its first detected position and its last position.
+- __Curvilinear velocity (VCL)__. The time-average velocity of the object along its actual trajectory.
 
 ## Execute image processing
 
