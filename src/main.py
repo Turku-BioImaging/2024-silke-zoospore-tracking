@@ -6,6 +6,7 @@ from tqdm import tqdm
 from metrics.straight_line_velocity import process_all_data as straight_line_velocity
 from metrics.curvilinear_velocity import process_all_data as curvilinear_velocity
 from metrics.directionality_ratio import process_all_data as directionality_ratio
+from metrics.average_speed import process_all_data as average_speed
 import argparse
 
 ZARR_PATH = os.path.join(
@@ -18,9 +19,10 @@ def run_object_detection(replicate, experiment):
 
 
 def calculate_metrics():
-    # straight_line_velocity()
-    # curvilinear_velocity()
+    straight_line_velocity()
+    curvilinear_velocity()
     directionality_ratio()
+    average_speed()
 
 
 def main(args):
