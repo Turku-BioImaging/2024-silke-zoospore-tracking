@@ -3,10 +3,7 @@ import zarr
 from detect import detect_objects
 from link import link_detections
 from tqdm import tqdm
-from metrics.straight_line_velocity import process_all_data as straight_line_velocity
-from metrics.curvilinear_velocity import process_all_data as curvilinear_velocity
-from metrics.directionality_ratio import process_all_data as directionality_ratio
-from metrics.average_speed import process_all_data as average_speed
+from metrics.particles import process_all_data as particle_metrics
 import argparse
 
 ZARR_PATH = os.path.join(
@@ -16,13 +13,6 @@ ZARR_PATH = os.path.join(
 
 def run_object_detection(replicate, experiment):
     detect_objects(replicate, experiment, ZARR_PATH)
-
-
-def calculate_metrics():
-    straight_line_velocity()
-    curvilinear_velocity()
-    directionality_ratio()
-    average_speed()
 
 
 def main(args):
@@ -43,7 +33,7 @@ def main(args):
             link_detections(replicate, experiment, ZARR_PATH)
 
     if args.metrics:
-        calculate_metrics()
+        particle_metrics()
 
 
 if __name__ == "__main__":
