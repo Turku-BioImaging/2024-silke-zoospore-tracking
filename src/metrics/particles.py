@@ -14,6 +14,7 @@ TRACKING_DATA_DIR = os.path.join(
 PIXEL_SIZE = constants.PIXEL_SIZE
 FRAME_INTERVAL_REGULAR = constants.FRAME_INTERVAL_REGULAR
 FRAME_INTERVAL_LOW_LIGHT = constants.FRAME_INTERVAL_LOW_LIGHT
+DIRECTION_CHANGE_THRESHOLD = constants.DIRECTION_CHANGE_THRESHOLD
 
 
 def _calculate_average_speed(particle_df: pl.DataFrame) -> dict:
@@ -83,6 +84,22 @@ def _calculate_directionality_ratio(particle_df: pl.DataFrame) -> dict:
     }
 
 
+def _calculate_direction_change_frequency(particle_df: pl.DataFrame) -> float:
+    coordinates = particle_df.select(["x", "y"]).to_numpy()
+    directions = np.diff(coordinates, axis=0)
+    angles = np.arctan2(directions[1:, 1], directions[1:, 0]) - np.arctan2(
+        directions[:-1, 1], directions[:-1, 0]
+    )
+
+    angles = np.degrees(angles) % 360
+    direction_changes = np.sum(np.abs(angles) > DIRECTION_CHANGE_THRESHOLD)
+    frame_interval = particle_df.select(pl.col("frame_interval"))[0].item()
+    total_time = frame_interval * (len(coordinates) - 1)
+    direction_change_frequency = direction_changes / total_time
+
+    return direction_change_frequency
+
+
 def _calculate_area_covered(particle_df: pl.DataFrame) -> float:
     points = particle_df.select(["x", "y"])
     hull = ConvexHull(points.to_numpy())
@@ -98,6 +115,7 @@ def _get_particle_data(particle_id: int, df: pl.DataFrame) -> dict:
     directionality_ratio = _calculate_directionality_ratio(particle_df)
     straight_line_velocity = _calculate_straight_line_velocity(particle_df)
     area_covered = _calculate_area_covered(particle_df)
+    direction_change_frequency = _calculate_direction_change_frequency(particle_df)
 
     return {
         "particle_id": particle_id,
@@ -109,6 +127,7 @@ def _get_particle_data(particle_id: int, df: pl.DataFrame) -> dict:
         "straight_line_velocity_(um/s)": straight_line_velocity,
         "directionality_ratio": directionality_ratio["directionality_ratio"],
         "area_covered_(um^2)": area_covered,
+        "direction_change_frequency_(Hz)": direction_change_frequency,
     }
 
 
