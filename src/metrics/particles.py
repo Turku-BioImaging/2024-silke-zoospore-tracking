@@ -1,10 +1,12 @@
 import os
+
+import numpy as np
 import polars as pl
 from joblib import Parallel, delayed
-from tqdm import tqdm
-import constants
-import numpy as np
 from scipy.spatial import ConvexHull
+from tqdm import tqdm
+
+import constants
 
 TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "..", "data", "tracking_data"
@@ -143,20 +145,6 @@ def process_all_data():
         delayed(process_tracking_data)(td)
         for td in tqdm(tracking_data, desc="Calculating particle metrics")
     )
-
-    # for replicate, sample in tracking_data[:1]:
-    #     csv_path = os.path.join(TRACKING_DATA_DIR, replicate, sample, "tracks.csv")
-    #     df = pl.read_csv(csv_path)
-    #     particle_ids = (
-    #         df.select(pl.col("particle"))
-    #         .unique()
-    #         .sort("particle")
-    #         .to_series()
-    #         .to_list()
-    #     )
-
-    #     for particle_id in particle_ids:
-    #         _get_particle_data(particle_id, df)
 
 
 if __name__ == "__main__":
