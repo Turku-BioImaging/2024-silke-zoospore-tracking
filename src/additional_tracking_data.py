@@ -2,14 +2,12 @@ import json
 import os
 import re
 
-import constants
-import numpy as np
-
-import pandas as pd
 import polars as pl
 import trackpy as tp
-from tqdm import tqdm
 from joblib import Parallel, delayed
+from tqdm import tqdm
+
+import constants
 
 TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
@@ -109,9 +107,9 @@ def calculate_speeds(df: pl.DataFrame) -> pl.DataFrame:
         .alias("displacement_(um)"),
     )
 
-    df = df.with_columns(
-        (pl.col("displacement_(um)") / pl.col("frame_interval")).alias("speed_(um/s)"),
-    )
+    # df = df.with_columns(
+    #     (pl.col("displacement_(um)") / pl.col("frame_interval")).alias("speed_(um/s)"),
+    # )
 
     return df
 
@@ -158,8 +156,8 @@ def main():
             [
                 "replicate",
                 "sample",
-                "replicate_number",
-                "species",
+                # "replicate_number",
+                # "species",
                 "frame",
                 "particle",
                 "x",
@@ -174,13 +172,11 @@ def main():
                 "dx_(um)",
                 "dy_(um)",
                 "displacement_(um)",
-                "speed_(um/s)",
+                # "speed_(um/s)",
             ]
         )
 
-        df.write_csv(
-            os.path.join(TRACKING_DATA_DIR, replicate, sample, "tracking_derived.csv")
-        )
+        df.write_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "tracks.csv"))
 
     Parallel(n_jobs=-1)(
         delayed(process_tracks_data)(replicate, experiment)
