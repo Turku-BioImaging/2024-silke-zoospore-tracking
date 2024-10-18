@@ -29,3 +29,6 @@ python main.py --object-detection \
     --linking \
     --metrics
 ```
+
+## Inspect output data
+Run the script `data_app.py` and open the resulting local URL in the browser.
