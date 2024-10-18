@@ -1,4 +1,8 @@
-from dash import Dash, dcc, html
+"""
+Run this script to start the Dash app that displays the particle tracking data.
+"""
+
+from dash import Dash, Input, Output
 import plotly.express as px
 import polars as pl
 import dash_bootstrap_components as dbc
@@ -6,8 +10,35 @@ import os
 from tqdm import tqdm
 from joblib import Parallel, delayed
 import random
+from visualization.layout import create_layout
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "tracking_data")
+METRICS = [
+    {
+        "label": "Average speed (um/s)",
+        "value": "average_speed_(um/s)",
+    },
+    {
+        "label": "Curvilinear velocity (um/s)",
+        "value": "curvilinear_velocity_(um/s)",
+    },
+    {
+        "label": "Straight-line velocity (um/s)",
+        "value": "straight_line_velocity_(um/s)",
+    },
+    {
+        "label": "Directionality ratio",
+        "value": "directionality_ratio",
+    },
+    {
+        "label": "Area covered (um^2)",
+        "value": "area_covered_(um^2)",
+    },
+    {
+        "label": "Direction change frequency (Hz)",
+        "value": "direction_change_frequency_(Hz)",
+    },
+]
 
 
 def load_particle_data() -> pl.DataFrame:
@@ -36,8 +67,6 @@ def load_particle_data() -> pl.DataFrame:
             "replicate": replicate,
             "sample": sample,
             "test": test,
-            # "step_init_abs": step_init_abs,
-            # "step_end_abs": step_end_abs,
             "step": f"{step_init_abs}-{step_end_abs}",
         }
 
@@ -56,48 +85,40 @@ def load_particle_data() -> pl.DataFrame:
     return all_particle_df
 
 
-if __name__ == "__main__":
-    particles_df = load_particle_data()
+particles_df = load_particle_data()
 
-    app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
+app.layout = create_layout(
+    replicates=particles_df["replicate"].unique().to_list(), metrics=METRICS
+)
+
+
+@app.callback(
+    Output("particle-tracking-graph", "figure"),
+    Input("replicates-checklist", "value"),
+    Input("metrics-radioitems", "value"),
+)
+def update_graph(selected_replicates, selected_metric):
+    filtered_particles_df = particles_df.filter(
+        pl.col("replicate").is_in(selected_replicates)
+    )
+
+    # print(selected_metric)
+    filtered_metric = list(filter(lambda x: x["value"] == selected_metric, METRICS))
 
     fig = px.strip(
-        particles_df.to_pandas(),
-        y="straight_line_velocity_(um/s)",
+        filtered_particles_df,
+        y=selected_metric,
         color="replicate",
         facet_col="step",
         facet_col_wrap=10,
         height=1024,
-        labels={"straight_line_velocity_(um/s)": "SLV (µm/s)"},
-        template="plotly_white",
+        labels={selected_metric: filtered_metric[0]["label"]},
+        template="plotly_dark",
     )
 
-    app.layout = dbc.Container(
-        [
-            dbc.Row(dbc.Col(html.H1("Zoospore data"), className="mb-4")),
-            dbc.Row(
-                [
-                    dbc.Col(
-                        [
-                            html.H4("Select replicates to display:"),
-                            dcc.Checklist(
-                                id="replicates",
-                                options=[
-                                    {"label": replicate, "value": replicate}
-                                    for replicate in particles_df["replicate"]
-                                    .unique()
-                                    .to_list()
-                                ],
-                                value=particles_df["replicate"].unique().to_list(),
-                                labelStyle={"display": "block"},
-                            ),
-                        ],
-                        width=2,
-                    ),
-                    dbc.Col(dcc.Graph(id="particle-tracking-graph", figure=fig), width=10),
-                ]
-            ),
-        ],
-        fluid=True,
-    )
+    return fig
+
+
+if __name__ == "__main__":
     app.run_server(debug=True)
