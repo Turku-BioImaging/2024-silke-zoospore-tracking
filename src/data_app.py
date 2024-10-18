@@ -95,7 +95,7 @@ particles_df = load_particle_data()
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
 app.layout = create_layout(
-    replicates=particles_df["replicate"].unique().to_list(), metrics=METRICS
+    replicates=sorted(particles_df["replicate"].unique().to_list()), metrics=METRICS
 )
 
 
@@ -121,7 +121,9 @@ def update_graph(selected_replicates, selected_metric):
         height=1024,
         labels={selected_metric: filtered_metric[0]["label"]},
         template="plotly_dark",
-        category_orders={"step": sorted(filtered_particles_df["step"].unique(), reverse=True)},
+        category_orders={
+            "step": sorted(filtered_particles_df["step"].unique(), reverse=True)
+        },
     )
 
     return fig
