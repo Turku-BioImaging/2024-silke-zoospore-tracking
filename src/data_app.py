@@ -67,6 +67,8 @@ def load_particle_data() -> pl.DataFrame:
             "replicate": replicate,
             "sample": sample,
             "test": test,
+            # "step_init_abs": step_init_abs,
+            # "step_end_abs": step_end_abs,
             "step": f"{step_init_abs}-{step_end_abs}",
         }
 
@@ -79,7 +81,11 @@ def load_particle_data() -> pl.DataFrame:
 
     all_particle_df = pl.concat(all_particle_df)
     all_particle_df = all_particle_df.sort(
-        ["replicate", "sample", "particle_id", "test"]
+        [
+            "replicate",
+            "sample",
+            "particle_id",
+        ]
     )
 
     return all_particle_df
@@ -115,6 +121,7 @@ def update_graph(selected_replicates, selected_metric):
         height=1024,
         labels={selected_metric: filtered_metric[0]["label"]},
         template="plotly_dark",
+        category_orders={"step": sorted(filtered_particles_df["step"].unique(), reverse=True)},
     )
 
     return fig
