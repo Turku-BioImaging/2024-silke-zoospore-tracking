@@ -2,7 +2,7 @@
 Run this script to start the Dash app that displays the particle tracking data.
 """
 
-from dash import Dash, Input, Output
+from dash import Dash, Input, Output, callback_context
 import plotly.express as px
 import polars as pl
 import dash_bootstrap_components as dbc
@@ -88,6 +88,7 @@ def load_particle_data() -> pl.DataFrame:
         ]
     )
 
+
     return all_particle_df
 
 
@@ -95,7 +96,9 @@ particles_df = load_particle_data()
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
 app.layout = create_layout(
-    replicates=sorted(particles_df["replicate"].unique().to_list()), metrics=METRICS
+    replicates=sorted(particles_df["replicate"].unique().to_list()),
+    metrics=METRICS,
+    steps=sorted(particles_df["step"].unique(), reverse=True),
 )
 
 
@@ -103,10 +106,12 @@ app.layout = create_layout(
     Output("particle-tracking-graph", "figure"),
     Input("replicates-checklist", "value"),
     Input("metrics-radioitems", "value"),
+    Input("steps-dropdown", "value"),
 )
-def update_graph(selected_replicates, selected_metric):
+def update_graph(selected_replicates: list, selected_metric: str, selected_steps: list):
     filtered_particles_df = particles_df.filter(
-        pl.col("replicate").is_in(selected_replicates)
+        (pl.col("replicate").is_in(selected_replicates))
+        & (pl.col("step").is_in(selected_steps))
     )
 
     # print(selected_metric)
@@ -127,6 +132,27 @@ def update_graph(selected_replicates, selected_metric):
     )
 
     return fig
+
+
+@app.callback(
+    Output("steps-dropdown", "value"),
+    Input("select-all-button", "n_clicks"),
+    Input("select-none-button", "n_clicks"),
+)
+def update_steps_dropdown(select_all_clicks, select_none_clicks):
+    ctx = callback_context
+
+    if not ctx.triggered:
+        return sorted(particles_df["step"].unique(), reverse=True)
+
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if button_id == "select-all-button":
+        return sorted(particles_df["step"].unique(), reverse=True)
+    elif button_id == "select-none-button":
+        return []
+
+    return sorted(particles_df["step"].unique(), reverse=True)
 
 
 if __name__ == "__main__":

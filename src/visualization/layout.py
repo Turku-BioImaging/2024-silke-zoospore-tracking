@@ -2,7 +2,7 @@ import dash_bootstrap_components as dbc
 from dash import html, dcc
 
 
-def create_layout(replicates: list, metrics=list[dict]) -> dbc.Container:
+def create_layout(replicates: list, metrics=list[dict], steps=list) -> dbc.Container:
     return dbc.Container(
         [
             dbc.Row(dbc.Col(html.H1("Zoospore data"), className="mb-4")),
@@ -26,6 +26,28 @@ def create_layout(replicates: list, metrics=list[dict]) -> dbc.Container:
                                 options=metrics,
                                 value=metrics[0]["value"],
                                 labelStyle={"display": "block"},
+                            ),
+                            html.H4("Test steps", className="mt-4"),
+                            dcc.Dropdown(steps, [], multi=True, id="steps-dropdown"),
+                            dbc.Row(
+                                dbc.Col(
+                                    [
+                                        html.Button(
+                                            "Select All",
+                                            id="select-all-button",
+                                            n_clicks=None,
+                                            style={"margin-right": "0px"},
+                                        ),
+                                        html.Button(
+                                            "Select None",
+                                            id="select-none-button",
+                                            n_clicks=1,
+                                            style={"margin-left": "0px"},
+                                        ),
+                                    ],
+                                    style={"display": "flex", "align-items": "center"},
+                                ),
+                                align="left",
                             ),
                         ],
                         width=2,
