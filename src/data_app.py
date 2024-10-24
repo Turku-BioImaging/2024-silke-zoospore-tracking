@@ -11,6 +11,7 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 import random
 from visualization.layout import create_layout
+from dotenv import load_dotenv
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "tracking_data")
 METRICS = [
@@ -94,7 +95,19 @@ def load_particle_data() -> pl.DataFrame:
 
 particles_df = load_particle_data()
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
+# Load environment variables from a .env file
+# load_dotenv()
+
+def _get_url_base_pathname():
+    load_dotenv(dotenv_path=".env")
+    load_dotenv(dotenv_path=".env.local")
+    
+    if os.getenv('URL_BASE_PATHNAME'):
+        return os.getenv('URL_BASE_PATHNAME')
+    else:
+        return "/"
+
+app = Dash(__name__, external_stylesheets=[dbc.themes.SLATE], url_base_pathname=_get_url_base_pathname())
 app.layout = create_layout(
     replicates=sorted(particles_df["replicate"].unique().to_list()),
     metrics=METRICS,
