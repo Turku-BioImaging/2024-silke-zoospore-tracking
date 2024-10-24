@@ -50,9 +50,9 @@ def create_layout(replicates: list, metrics=list[dict], steps=list) -> dbc.Conta
                                 align="left",
                             ),
                         ],
-                        width=2,
+                        width=3,
                     ),
-                    dbc.Col(dcc.Graph(id="particle-tracking-graph"), width=10),
+                    dbc.Col(dcc.Graph(id="particle-tracking-graph")),
                 ]
             ),
         ],

@@ -51,7 +51,7 @@ def load_particle_data() -> pl.DataFrame:
         if os.path.isdir(os.path.join(DATA_DIR, replicate, sample))
     ]
 
-    random.shuffle(sample_data)
+    # random.shuffle(sample_data)
 
     def compile_particle_data(td):
         replicate, sample = td
