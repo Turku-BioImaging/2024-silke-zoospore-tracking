@@ -1,3 +1,8 @@
+"""
+Main entrypoint script for the entire processing pipeline. Expected input is a Zarr group containing
+the raw data. The script will run object detection, linking, and metrics calculation.
+"""
+
 import os
 import zarr
 from detect import detect_objects
