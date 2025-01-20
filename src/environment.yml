@@ -2,18 +2,17 @@ name: project-silke-zoospore-tracking
 channels:
   - conda-forge
 dependencies:
-  # - cudatoolkit
   - ca-certificates
-  - dask
+  - dask=2024.12.1
   - joblib
   - numba
   - openssl
   - pandas
   - polars=1.2
   - pip:
+      - bioio
+      - bioio-nd2
       - python_dotenv
-      - aicsimageio
-      - aicsimageio[nd2]
       - dash
       - dash-bootstrap-components
       - plotly

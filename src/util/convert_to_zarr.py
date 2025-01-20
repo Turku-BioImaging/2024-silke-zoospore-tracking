@@ -1,14 +1,15 @@
 """
-Converts raw data to Zarr format
+Converts ND2 raw data to Zarr format
 """
-import os
 
-from multiprocessing import cpu_count
+import os
 from glob import glob
+
+import bioio_nd2
+import dask.array as da
 import zarr
-from aicsimageio import AICSImage as aic
-import numpy as np
-from joblib import Parallel, delayed
+from bioio import BioImage
+from tqdm import tqdm
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "nd2")
 ZARR_PATH = os.path.join(
@@ -17,13 +18,22 @@ ZARR_PATH = os.path.join(
 
 
 def process_sample(sample_name):
-    img = aic(os.path.join(DATA_DIR, parent_dir, f"{sample_name}.nd2"))
-    img_data = img.data
-    img_data = np.squeeze(img_data, axis=(1, 2))
-    img_data = np.moveaxis(img_data, -1, 1)
+    img = BioImage(
+        os.path.join(DATA_DIR, parent_dir, f"{sample_name}.nd2"),
+        reader=bioio_nd2.Reader,
+    )
+    img_da = img.dask_data
+    img_da = da.squeeze(img_da, axis=(1, 2))
+    img_da = da.moveaxis(img_da, -1, 1)
 
     metadata = dict(img.metadata)
     instrument = dict(metadata["instruments"][0])
+
+    print(f"Writing {parent_dir}/{sample_name}")
+    img_da = img_da.rechunk()
+    img_da.to_zarr(url=ZARR_PATH, component=f"{parent_dir}/{sample_name}/raw_data")
+
+    dataset = root[f"{parent_dir}/{sample_name}/raw_data"]
 
     attrs = {
         "author": "Silke Van den Wyngaert, University of Turku",
@@ -36,11 +46,6 @@ def process_sample(sample_name):
             "nominal_magnification"
         ],
     }
-
-    print(f"Writing {parent_dir}/{sample_name}")
-    dataset = root.create_dataset(
-        f"{parent_dir}/{sample_name}/raw_data", data=img_data, chunks=(200, 1, 256, 256)
-    )
     dataset.attrs.update(attrs)
 
 
@@ -51,14 +56,11 @@ if __name__ == "__main__":
 
     root = zarr.open(ZARR_PATH, mode="w")
 
-    n_jobs = max(cpu_count() - 4, 1)
-
     for parent_dir in parent_dirs:
         sample_names = [
             os.path.basename(f).replace(".nd2", "")
             for f in glob(os.path.join(DATA_DIR, parent_dir, "*.nd2"))
         ]
 
-        Parallel(n_jobs=n_jobs)(
-            delayed(process_sample)(sample_name) for sample_name in sample_names
-        )
+        for sample_name in tqdm(sample_names):
+            process_sample(sample_name)
