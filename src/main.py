@@ -16,7 +16,8 @@ def run_object_detection(replicate, experiment):
 
 
 def main(args):
-    root = zarr.open_group(ZARR_PATH, mode="r")
+    zarr_path = args.zarr_path
+    root = zarr.open_group(zarr_path, mode="r")
 
     exp_data = [
         (replicate, experiment)
@@ -26,11 +27,11 @@ def main(args):
 
     if args.object_detection:
         for replicate, experiment in tqdm(exp_data):
-            detect_objects(replicate, experiment, ZARR_PATH)
+            detect_objects(replicate, experiment, zarr_path)
 
     if args.linking:
         for replicate, experiment in tqdm(exp_data):
-            link_detections(replicate, experiment, ZARR_PATH)
+            link_detections(replicate, experiment, zarr_path)
 
     if args.metrics:
         particle_metrics()
@@ -38,6 +39,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--zarr-path", type=str, default=ZARR_PATH)
     parser.add_argument("--object-detection", action="store_true")
     parser.add_argument("--linking", action="store_true")
     parser.add_argument("--metrics", action="store_true")
