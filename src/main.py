@@ -32,11 +32,11 @@ def main(args):
 
     if args.object_detection:
         for replicate, experiment in tqdm(exp_data):
-            detect_objects(replicate, experiment, zarr_path)
+            detect_objects(replicate, experiment, zarr_path, args.overwrite)
 
     if args.linking:
         for replicate, experiment in tqdm(exp_data):
-            link_detections(replicate, experiment, zarr_path)
+            link_detections(replicate, experiment, zarr_path, args.overwrite)
 
     if args.metrics:
         particle_metrics()
@@ -48,6 +48,9 @@ if __name__ == "__main__":
     parser.add_argument("--object-detection", action="store_true")
     parser.add_argument("--linking", action="store_true")
     parser.add_argument("--metrics", action="store_true")
+    parser.add_argument(
+        "--overwrite", action="store_true", help="Overwrite existing data"
+    )
     args = parser.parse_args()
 
     main(args)
