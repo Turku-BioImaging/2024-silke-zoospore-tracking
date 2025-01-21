@@ -59,10 +59,9 @@ def detect_objects(
     root: Group = zarr.open_group(zarr_path, mode="a")
 
     raw_da = da.from_zarr(root[f"{replicate}/{experiment}/raw_data"])  # type: ignore
-    assert raw_da.ndim == 4, "Expected 4D data"
-    assert raw_da.shape[1] == 3, "Expected 3 channels."
+    assert raw_da.ndim == 3, "Expected 2D time-series data"
+    assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
-    assert raw_da.shape[3] == 712
     assert raw_da.dtype == "uint8"
 
     valid_detection = __validate_detection_dataset(root, replicate, experiment)
@@ -70,7 +69,7 @@ def detect_objects(
     if valid_detection and not overwrite:
         return
 
-    frames = raw_da[:, 2, :, :].compute()
+    frames = raw_da[:, :, :].compute()
     tp.quiet()
     f = tp.batch(frames, 7, minmass=100, maxsize=12)
 
