@@ -22,18 +22,23 @@ def process_sample(sample_name):
         os.path.join(DATA_DIR, parent_dir, f"{sample_name}.nd2"),
         reader=bioio_nd2.Reader,
     )
+
     img_da = img.dask_data
     img_da = da.squeeze(img_da, axis=(1, 2))
     img_da = da.moveaxis(img_da, -1, 1)
+    img_da = img_da[:, 2, :, :]
+    img_da = img_da.rechunk()
 
     metadata = dict(img.metadata)
     instrument = dict(metadata["instruments"][0])
 
     print(f"Writing {parent_dir}/{sample_name}")
-    img_da = img_da.rechunk()
-    img_da.to_zarr(url=ZARR_PATH, component=f"{parent_dir}/{sample_name}/raw_data")
 
-    dataset = root[f"{parent_dir}/{sample_name}/raw_data"]
+    dataset = root.create_dataset(
+        f"{parent_dir}/{sample_name}/raw_data",
+        data=img_da.compute(),
+        chunks=(50, 712, 712),
+    )
 
     attrs = {
         "author": "Silke Van den Wyngaert, University of Turku",
