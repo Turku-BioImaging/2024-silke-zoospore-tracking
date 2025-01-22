@@ -9,6 +9,7 @@ import bioio_nd2
 import dask.array as da
 import zarr
 from bioio import BioImage
+from joblib import Parallel, delayed
 from tqdm import tqdm
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "nd2")
@@ -17,7 +18,11 @@ ZARR_PATH = os.path.join(
 )
 
 
-def process_sample(sample_name):
+def process_sample(sample_name, overwrite=False):
+    if not overwrite:
+        if f"{parent_dir}/{sample_name}/raw_data" in root:
+            return
+
     img = BioImage(
         os.path.join(DATA_DIR, parent_dir, f"{sample_name}.nd2"),
         reader=bioio_nd2.Reader,
@@ -37,7 +42,7 @@ def process_sample(sample_name):
     dataset = root.create_dataset(
         f"{parent_dir}/{sample_name}/raw_data",
         data=img_da.compute(),
-        chunks=(50, 712, 712),
+        chunks=(20, 712, 712),
     )
 
     attrs = {
@@ -59,7 +64,7 @@ if __name__ == "__main__":
         d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))
     ]
 
-    root = zarr.open(ZARR_PATH, mode="w")
+    root = zarr.open(ZARR_PATH, mode="a")
 
     for parent_dir in parent_dirs:
         sample_names = [
@@ -67,5 +72,6 @@ if __name__ == "__main__":
             for f in glob(os.path.join(DATA_DIR, parent_dir, "*.nd2"))
         ]
 
-        for sample_name in tqdm(sample_names):
-            process_sample(sample_name)
+        Parallel(n_jobs=-1)(
+            delayed(process_sample)(sample_name) for sample_name in tqdm(sample_names)
+        )
