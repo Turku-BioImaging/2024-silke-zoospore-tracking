@@ -15,6 +15,8 @@ TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
 )
 
+np.random.seed(874)
+
 
 def __draw_detection_overlay(df, frame, color_keys: dict):
     rgb = color.gray2rgb(frame)
@@ -74,8 +76,6 @@ def link_detections(
     if valid_linking and valid_csv and not overwrite:
         return
 
-    np.random.seed(874)
-
     detection_path = os.path.join(
         TRACKING_DATA_DIR, replicate, experiment, "detection.csv"
     )
@@ -84,7 +84,7 @@ def link_detections(
     tp.quiet()
     pred = tp.predict.NearestVelocityPredict()  # type: ignore
     t = pred.link_df(f, search_range=8, memory=20)
-    t = tp.filter_stubs(t, 25)
+    t = tp.filter_stubs(t, 35)  # the min number of frames a particle must be present
     t = t[t["mass"] <= 900]
     t = t[t["size"] <= 1.8]
 
@@ -98,8 +98,11 @@ def link_detections(
                 [area_covered_df, pd.DataFrame({"particle": [name], "area": [area]})]
             )
 
+    # Filter out particles that don't cover enough area.
+    # This will remove particles that have little to no movement.
+    # This setting is important in reducing the low-level noise in the data.
     area_covered_df.set_index("particle", inplace=True)
-    threshold = 5
+    threshold = 10
     particles_to_keep = area_covered_df[area_covered_df["area"] > threshold].index
 
     t = t[t["particle"].isin(particles_to_keep)]
@@ -121,7 +124,7 @@ def link_detections(
     assert raw_da.shape[3] == 712
     assert raw_da.dtype == "uint8"
 
-    frames = raw_da[:, 2, :, :].compute()
+    frames = raw_da[:, :, :].compute()
 
     overlay_frames = []
 

@@ -28,27 +28,6 @@ def __draw_detection_overlay(df, frame):
     return rgb
 
 
-def __validate_detection_dataset(root: Group, replicate: str, experiment: str) -> bool:
-    if replicate not in root:
-        return False
-
-    if experiment not in root[replicate]:
-        return False
-
-    if "detection" not in root[replicate][experiment]:
-        return False
-
-    dataset = root[f"{replicate}/{experiment}/detection"]
-
-    if "author" not in dataset.attrs:
-        return False
-
-    if dataset.attrs.get("author") != "Turku BioImaging":
-        return False
-
-    return True
-
-
 def detect_objects(
     replicate: str,
     experiment: str,
@@ -58,16 +37,11 @@ def detect_objects(
 ) -> None:
     root: Group = zarr.open_group(zarr_path, mode="a")
 
-    raw_da = da.from_zarr(root[f"{replicate}/{experiment}/raw_data"])  # type: ignore
+    raw_da = da.from_zarr(root[f"{replicate}/{experiment}/raw_data"])
     assert raw_da.ndim == 3, "Expected 2D time-series data"
     assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
     assert raw_da.dtype == "uint8"
-
-    valid_detection = __validate_detection_dataset(root, replicate, experiment)
-
-    if valid_detection and not overwrite:
-        return
 
     frames = raw_da[:, :, :].compute()
     tp.quiet()
@@ -85,9 +59,9 @@ def detect_objects(
 
     for t in range(frames.shape[0]):
         overlay = __draw_detection_overlay(f[f.frame == t], frames[t])
-        detection_overlays.append(da.from_array(overlay))  # type: ignore
+        detection_overlays.append(da.from_array(overlay))
 
-    detection_da = da.stack(detection_overlays)  # type: ignore
+    detection_da = da.stack(detection_overlays)
     detection_da = detection_da.rechunk()
     detection_da.to_zarr(
         url=zarr_path, component=f"{replicate}/{experiment}/detection", overwrite=True
