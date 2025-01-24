@@ -32,7 +32,13 @@ def main(args):
 
     if args.object_detection:
         for replicate, experiment in tqdm(exp_data):
-            detect_objects(replicate, experiment, zarr_path, args.overwrite)
+            detect_objects(
+                replicate=replicate,
+                experiment=experiment,
+                zarr_path=zarr_path,
+                save_detection_data=True,
+                overwrite=args.overwrite,
+            )
 
     if args.linking:
         for replicate, experiment in tqdm(exp_data):
