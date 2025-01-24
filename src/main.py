@@ -5,11 +5,13 @@ the raw data. The script will run object detection, linking, and metrics calcula
 
 import os
 import zarr
+from cleanup import make_exclusion_masks
 from detect import detect_objects
 from link import link_detections
 from tqdm import tqdm
 from metrics.particles import process_all_data as particle_metrics
 import argparse
+from joblib import Parallel, delayed
 
 ZARR_PATH = os.path.join(
     os.path.dirname(__file__), "..", "data", "silke-zoospore-data.zarr"
@@ -29,6 +31,14 @@ def main(args):
         for replicate in root.keys()
         for experiment in root[replicate].keys()
     ]
+
+    if args.cleanup:
+        Parallel(n_jobs=-1)(
+            delayed(make_exclusion_masks)(
+                replicate, experiment, zarr_path, args.overwrite
+            )
+            for replicate, experiment in tqdm(exp_data)
+        )
 
     if args.object_detection:
         for replicate, experiment in tqdm(exp_data):
@@ -51,6 +61,11 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--zarr-path", type=str, default=ZARR_PATH)
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Generate exclusion masks to help clean up the raw data",
+    )
     parser.add_argument("--object-detection", action="store_true")
     parser.add_argument("--linking", action="store_true")
     parser.add_argument("--metrics", action="store_true")
