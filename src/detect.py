@@ -43,7 +43,21 @@ def detect_objects(
     assert raw_da.shape[2] == 712
     assert raw_da.dtype == "uint8"
 
+    exclude_large_objects = da.from_zarr(
+        root[f"{replicate}/{experiment}/exclusion_masks/large_objects"]
+    )
+
+    # check if detection data already exists, skip if overwrite is False
+    if overwrite is False and "detection" in root[f"{replicate}/{experiment}"]:
+        return
+
+    detection_overlays = []
+
     frames = raw_da[:, :, :].compute()
+    exclude = exclude_large_objects.compute()
+
+    frames[exclude] = 0
+
     tp.quiet()
     f = tp.batch(frames, 7, minmass=100, maxsize=12)
 
