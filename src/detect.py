@@ -77,8 +77,11 @@ def detect_objects(
 
     detection_da = da.stack(detection_overlays)
     detection_da = detection_da.rechunk()
+
     detection_da.to_zarr(
-        url=zarr_path, component=f"{replicate}/{experiment}/detection", overwrite=True
+        url=zarr_path,
+        component=f"{replicate}/{experiment}/detection",
+        overwrite=overwrite,
     )
 
     overlay_group = root[f"{replicate}/{experiment}/detection"]
