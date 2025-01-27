@@ -26,6 +26,11 @@ def make_exclusion_masks(
     raw_da = da.from_zarr(root[f"{replicate}/{experiment}/raw_data"])
 
     # large objects time-series
+    if "exclusion_masks" in root[f"{replicate}/{experiment}"]:
+        if "large_objects" in root[f"{replicate}/{experiment}/exclusion_masks"]:
+            if overwrite is False:
+                return
+
     large_objects = []
 
     for t in range(raw_da.shape[0]):
