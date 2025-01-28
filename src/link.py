@@ -121,8 +121,8 @@ def link_detections(
     }
 
     raw_da = da.from_zarr(root[f"{replicate}/{experiment}/raw_data"])  # type: ignore
-    assert raw_da.ndim == 4, "Expected 4D data"
-    assert raw_da.shape[1] == 3, "Expected 3 channels."
+    assert raw_da.ndim == 3, "Expected 2D time series data"
+    assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
     assert raw_da.shape[3] == 712
     assert raw_da.dtype == "uint8"
