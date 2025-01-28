@@ -12,6 +12,7 @@ dependencies:
       - alive-progress
       - bioio
       - bioio-nd2
+      - dask
       - python_dotenv
       - dash
       - dash-bootstrap-components
