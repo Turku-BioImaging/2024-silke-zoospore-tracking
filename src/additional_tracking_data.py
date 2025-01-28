@@ -143,6 +143,8 @@ def main():
         df = calculate_speeds(df)
 
         # write imsd and emsd data
+        if len(df) == 0:
+            return
         fps = 1 / (df["frame_interval"][0])
         df_pandas = df.to_pandas()
         im = tp.imsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
