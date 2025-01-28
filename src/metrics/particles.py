@@ -152,6 +152,10 @@ def process_all_data():
 
     def process_tracking_data(td):
         csv_path = os.path.join(TRACKING_DATA_DIR, td[0], td[1], "tracks.csv")
+
+        if not os.path.isfile(csv_path):
+            return
+
         df = pl.read_csv(csv_path)
         particle_ids = (
             df.select(pl.col("particle"))
