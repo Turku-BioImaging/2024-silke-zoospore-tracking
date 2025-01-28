@@ -124,7 +124,6 @@ def link_detections(
     assert raw_da.ndim == 3, "Expected 2D time series data"
     assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
-    assert raw_da.shape[3] == 712
     assert raw_da.dtype == "uint8"
 
     frames = raw_da[:, :, :].compute()
