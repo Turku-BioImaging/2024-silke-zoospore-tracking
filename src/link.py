@@ -25,7 +25,7 @@ def __draw_detection_overlay(df, frame, color_keys: dict):
     height, width = frame.shape
 
     for _, row in df.iterrows():
-        rr, cc = draw.circle_perimeter(int(row.y), int(row.x), 7)
+        rr, cc = draw.circle_perimeter(int(row.y), int(row.x), 5)
         valid = (rr >= 0) & (rr < height) & (cc >= 0) & (cc < width)
         rr, cc = rr[valid], cc[valid]
         particle = row.particle
