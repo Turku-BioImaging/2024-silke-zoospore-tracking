@@ -53,13 +53,16 @@ def detect_objects(
 
     detection_overlays = []
 
-    frames = raw_da[:, :, :].compute()
-    exclude = exclude_large_objects.compute()
+    frames = raw_da[:, :, :]
+    exclude = exclude_large_objects
 
-    frames[exclude] = 0
+    # Fill exclusion areas using mean intensity
+    # of the entire time series
+    mean_intensity = frames.mean().compute()
+    frames[exclude] = mean_intensity
 
     tp.quiet()
-    f = tp.batch(frames, 7, minmass=100, maxsize=12)
+    f = tp.batch(frames.compute(), 5, minmass=40, separation=3)
 
     if save_detection_data is True:
         tracking_dir_path = os.path.join(TRACKING_DATA_DIR, replicate, experiment)
@@ -69,8 +72,7 @@ def detect_objects(
         f.to_csv(os.path.join(tracking_dir_path, "detection.csv"))
 
     # save detection overlay
-    detection_overlays = []
-
+    frames = frames.compute()
     for t in range(frames.shape[0]):
         overlay = __draw_detection_overlay(f[f.frame == t], frames[t])
         detection_overlays.append(da.from_array(overlay))
