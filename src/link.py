@@ -16,6 +16,7 @@ TRACKING_DATA_DIR = os.path.join(
 )
 
 np.random.seed(874)
+tp.linking.Linker.MAX_SUB_NET_SIZE = 10000
 
 
 def __draw_detection_overlay(df, frame, color_keys: dict):
@@ -82,9 +83,11 @@ def link_detections(
     f = pd.read_csv(detection_path)
 
     tp.quiet()
-    pred = tp.predict.NearestVelocityPredict()  # type: ignore
-    t = pred.link_df(f, search_range=8, memory=20)
-    t = tp.filter_stubs(t, 35)  # the min number of frames a particle must be present
+    pred = tp.predict.NearestVelocityPredict(span=20)
+    # t = pred.link_df(f, search_range=10, memory=20)
+    # t = tp.link_df(f, search_range=10, memory=20)
+    t = pred.link_df(f, search_range=12, memory=20, adaptive_stop=5, adaptive_step=0.95)
+    t = tp.filter_stubs(t, 30)  # the min number of frames a particle must be present
     t = t[t["mass"] <= 900]
     t = t[t["size"] <= 1.8]
 
