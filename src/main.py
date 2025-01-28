@@ -9,6 +9,7 @@ from cleanup import make_exclusion_masks
 from detect import detect_objects
 from link import link_detections
 from metrics.particles import process_all_data as particle_metrics
+from additional_tracking_data import process_all_tracks as add_tracking_data
 import argparse
 from alive_progress import alive_bar
 
@@ -59,6 +60,7 @@ def main(args):
                 bar()
 
     if args.metrics:
+        add_tracking_data()
         particle_metrics()
 
 
