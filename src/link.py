@@ -71,11 +71,11 @@ def link_detections(
 ) -> None:
     root: Group = zarr.open_group(zarr_path, mode="a")
 
-    valid_linking = __validate_linking_dataset(root, replicate, experiment)
-    valid_csv = __validate_csv(replicate, experiment)
-
-    if valid_linking and valid_csv and not overwrite:
-        return
+    if "linking" in root[replicate][experiment] and __validate_csv(
+        replicate, experiment
+    ):
+        if not overwrite:
+            return
 
     detection_path = os.path.join(
         TRACKING_DATA_DIR, replicate, experiment, "detection.csv"
