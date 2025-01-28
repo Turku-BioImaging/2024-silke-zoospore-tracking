@@ -105,7 +105,7 @@ def link_detections(
     # This will remove particles that have little to no movement.
     # This setting is important in reducing the low-level noise in the data.
     area_covered_df.set_index("particle", inplace=True)
-    threshold = 10
+    threshold = 30
     particles_to_keep = area_covered_df[area_covered_df["area"] > threshold].index
 
     t = t[t["particle"].isin(particles_to_keep)]
