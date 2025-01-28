@@ -48,27 +48,6 @@ def make_exclusion_masks(
         overwrite=overwrite,
     )
 
-    # # find non-moving small objects
-    # # using MIP of time-series
-    # non_moving = []
-    # for t in range(raw_da.shape[0]):
-    #     thresholded = raw_da[t] > 85
-    #     non_moving.append(thresholded)
-
-    # non_moving = da.stack(non_moving)
-    # non_moving = da.max(non_moving, axis=0)
-    # non_moving = non_moving.rechunk()
-
-    # large_objects_mask = label(non_moving.compute())
-    # large_objects_mask = remove_small_objects(large_objects_mask, min_size=50)
-    # non_moving = non_moving * (large_objects_mask == 0)
-
-    # non_moving.to_zarr(
-    #     url=zarr_path,
-    #     component=f"{replicate}/{experiment}/exclusion_masks/non_moving",
-    #     overwrite=overwrite,
-    # )
-
 
 if __name__ == "__main__":
     root = zarr.open(ZARR_PATH, mode="r")
