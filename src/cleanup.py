@@ -1,6 +1,5 @@
 """
-Module for cleaning raw data by removing non-moving and/or large particles. Depends
-on global thresholding and binary morphological operations.
+Module for cleaning raw data by removing large particles. This will help to avoid false-positive detections, especially of objects that are bright aggregates. Uses global thresholding and binary morphological operations.
 """
 
 import os
