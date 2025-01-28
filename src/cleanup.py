@@ -11,6 +11,7 @@ import zarr
 
 # from skimage.measure import label
 from skimage.morphology import dilation, remove_small_objects
+from skimage.measure import label, regionprops
 from tqdm import tqdm
 
 ZARR_PATH = os.path.join(
@@ -36,7 +37,15 @@ def make_exclusion_masks(
     for t in range(raw_da.shape[0]):
         thresholded = raw_da[t] > 50
         large = remove_small_objects(thresholded.compute(), min_size=30)
+
+        labels = label(large)
+        props = regionprops(labels)
+        for prop in props:
+            if prop.area > 3600:
+                large[labels == prop.label] = 0
+
         large = dilation(large, footprint=np.ones((3, 3)))
+
         large_objects.append(da.from_array(large))
 
     large_objects = da.stack(large_objects)
