@@ -9,6 +9,7 @@ dependencies:
   - pandas
   - polars=1.2
   - pip:
+      - alive-progress
       - bioio
       - bioio-nd2
       - python_dotenv

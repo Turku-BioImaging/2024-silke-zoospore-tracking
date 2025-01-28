@@ -8,10 +8,9 @@ import zarr
 from cleanup import make_exclusion_masks
 from detect import detect_objects
 from link import link_detections
-from tqdm import tqdm
 from metrics.particles import process_all_data as particle_metrics
 import argparse
-from joblib import Parallel, delayed
+from alive_progress import alive_bar
 
 ZARR_PATH = os.path.join(
     os.path.dirname(__file__), "..", "data", "silke-zoospore-data.zarr"
@@ -33,26 +32,31 @@ def main(args):
     ]
 
     if args.cleanup:
-        Parallel(n_jobs=-1)(
-            delayed(make_exclusion_masks)(
-                replicate, experiment, zarr_path, args.overwrite
-            )
-            for replicate, experiment in tqdm(exp_data)
-        )
+        with alive_bar(len(exp_data)) as bar:
+            for replicate, experiment in exp_data:
+                print(f"Creating masks for {replicate} -- {experiment}")
+                make_exclusion_masks(replicate, experiment, zarr_path, args.overwrite)
+                bar()
 
     if args.object_detection:
-        for replicate, experiment in tqdm(exp_data):
-            detect_objects(
-                replicate=replicate,
-                experiment=experiment,
-                zarr_path=zarr_path,
-                save_detection_data=True,
-                overwrite=args.overwrite,
-            )
+        with alive_bar(len(exp_data)) as bar:
+            for replicate, experiment in exp_data:
+                print(f"Detecting objects in {replicate} -- {experiment}")
+                detect_objects(
+                    replicate=replicate,
+                    experiment=experiment,
+                    zarr_path=zarr_path,
+                    save_detection_data=True,
+                    overwrite=args.overwrite,
+                )
+                bar()
 
     if args.linking:
-        for replicate, experiment in tqdm(exp_data):
-            link_detections(replicate, experiment, zarr_path, args.overwrite)
+        with alive_bar(len(exp_data)) as bar:
+            for replicate, experiment in exp_data:
+                print(f"Linking {replicate} -- {experiment}")
+                link_detections(replicate, experiment, zarr_path, args.overwrite)
+                bar()
 
     if args.metrics:
         particle_metrics()
