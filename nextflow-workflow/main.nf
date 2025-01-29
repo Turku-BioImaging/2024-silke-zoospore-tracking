@@ -1,4 +1,4 @@
-params.input_dir = '../data/nd2-test'
+params.input_dir = '../data/nd2'
 params.output_dir = "${projectDir}/output"
 params.output_tiff_data = true
 
