@@ -30,6 +30,7 @@ process convert_to_zarr {
     path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/"
     path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/raw_data/"
     path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/raw_data/.zattrs"
+    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/raw_data/0.0.0"
 
     script:
     """
@@ -46,6 +47,8 @@ process make_exclusion_masks {
     output:
     tuple val(replicate_name), val(sample_name), val(zarr_path)
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/exclusion_masks/large_objects"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/exclusion_masks/large_objects/.zarray"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/exclusion_masks/large_objects/0.0.0"
 
     script:
     """
