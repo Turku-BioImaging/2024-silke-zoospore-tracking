@@ -1,0 +1,11 @@
+# python 3.10
+numba
+pandas
+polars==1.2
+alive-progress
+bioio
+bioio-nd2
+dask
+trackpy==0.6.4
+scikit-image
+zarr==2.18.3
