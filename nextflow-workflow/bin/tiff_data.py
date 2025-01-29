@@ -6,16 +6,19 @@ import argparse
 
 
 def save_tiff_data(output_dir: str, replicate: str, sample: str) -> None:
-    zarr_path = os.path.join(output_dir, replicate, sample, "image-data.zarr")
     tiff_dir = os.path.join(output_dir, replicate, sample, "image-data-tiff")
 
     os.makedirs(tiff_dir, exist_ok=True)
 
-    root = zarr.open(zarr_path, mode="r")
-
-    raw_da = da.from_zarr(root["raw_data"])
-    detection_da = da.from_zarr(root["detection"])
-    linking_da = da.from_zarr(root["linking"])
+    raw_da = da.from_zarr(
+        os.path.join(output_dir, replicate, sample, "image-data-zarr", "raw-data.zarr")
+    )
+    detection_da = da.from_zarr(
+        os.path.join(output_dir, replicate, sample, "image-data-zarr", "detection.zarr")
+    )
+    linking_da = da.from_zarr(
+        os.path.join(output_dir, replicate, sample, "image-data-zarr", "linking.zarr")
+    )
 
     io.imsave(
         os.path.join(tiff_dir, "raw_data.tif"), raw_da.compute(), check_contrast=False

@@ -13,6 +13,7 @@ np.random.seed(874)
 tp.linking.Linker.MAX_SUB_NET_SIZE = 10000
 tp.quiet()
 
+
 def __draw_detection_overlay(
     df: pd.DataFrame, frame: np.ndarray, color_dict: dict
 ) -> np.ndarray:
@@ -30,10 +31,9 @@ def __draw_detection_overlay(
     return rgb
 
 
-def link_objects(zarr_path: str, overwrite: bool = True) -> None:
-    root = zarr.open_group(zarr_path, mode="a")
-
-    tracking_data_dir = os.path.join(os.path.dirname(zarr_path), "tracking_data")
+def link_objects(output_dir: str, replicate: str, sample: str) -> None:
+    # root = zarr.open_group(zarr_path, mode="a")
+    tracking_data_dir = os.path.join(output_dir, replicate, sample, "tracking-data")
     detection_csv_path = os.path.join(tracking_data_dir, "detection.csv")
     f = pd.read_csv(detection_csv_path)
 
@@ -69,7 +69,10 @@ def link_objects(zarr_path: str, overwrite: bool = True) -> None:
         for particle in t["particle"].unique()
     }
 
-    raw_da = da.from_zarr(root["raw_data"])
+    raw_data_zarr_path = os.path.join(
+        output_dir, replicate, sample, "image-data-zarr", "raw-data.zarr"
+    )
+    raw_da = da.from_zarr(raw_data_zarr_path)
     assert raw_da.ndim == 3, "Expected 2D time-series data"
     assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
@@ -79,20 +82,32 @@ def link_objects(zarr_path: str, overwrite: bool = True) -> None:
 
     overlay_frames = []
     for time in range(frames.shape[0]):
-        overlay = __draw_detection_overlay(t[t["frame"] == time], frames[time], color_dict)
+        overlay = __draw_detection_overlay(
+            t[t["frame"] == time], frames[time], color_dict
+        )
         overlay_frames.append(da.from_array(overlay))
 
     overlay_da = da.stack(overlay_frames)
     overlay_da = overlay_da.rechunk()
-    overlay_da.to_zarr(url=zarr_path, component="linking", overwrite=overwrite)
+
+    overlay_zarr_path = os.path.join(
+        output_dir, replicate, sample, "image-data-zarr", "linking.zarr"
+    )
+    overlay_array = zarr.open(
+        overlay_zarr_path,
+        mode="w",
+        shape=overlay_da.shape,
+        chunks=(20, 712, 712),
+        dtype=overlay_da.dtype,
+    )
+    overlay_array[:] = overlay_da.compute()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Link detected objects")
-    parser.add_argument("--zarr-path", type=str, help="Path to Zarr file")
-    parser.add_argument(
-        "--overwrite", action="store_true", help="Overwrite existing data"
-    )
+    parser.add_argument("--output-dir", type=str, help="Output directory")
+    parser.add_argument("--replicate", type=str, help="Replicate name")
+    parser.add_argument("--sample", type=str, help="Sample name")
 
     args = parser.parse_args()
-    link_objects(args.zarr_path, args.overwrite)
+    link_objects(args.output_dir, args.replicate, args.sample)

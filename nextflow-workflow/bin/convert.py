@@ -5,6 +5,8 @@ import dask.array as da
 import zarr
 import argparse
 
+import zarr.convenience
+
 
 def convert_to_zarr(nd2_path: str, output_dir: str):
     img = BioImage(nd2_path, reader=bioio_nd2.Reader)
@@ -20,19 +22,20 @@ def convert_to_zarr(nd2_path: str, output_dir: str):
 
     replicate_name = os.path.basename(os.path.dirname(nd2_path))
     sample_name = os.path.splitext(os.path.basename(nd2_path))[0]
-    zarr_path = os.path.join(output_dir, replicate_name, sample_name, "image-data.zarr")
+    zarr_path = os.path.join(
+        output_dir, replicate_name, sample_name, "image-data-zarr", "raw-data.zarr"
+    )
 
     os.makedirs(os.path.join(output_dir, replicate_name, sample_name), exist_ok=True)
 
-    root = zarr.open(zarr_path, mode="a")
-
-    dataset = root.create_dataset(
-        "raw_data",
-        data=img_da.compute(),
+    dataset = zarr.open(
+        zarr_path,
+        mode="w",
+        shape=img_da.shape,
         chunks=(20, 712, 712),
         dtype=img_da.dtype,
-        overwrite=True,
     )
+    dataset[:] = img_da.compute()
 
     attrs = {
         "author": "Silke Van den Wyngaert, University of Turku",

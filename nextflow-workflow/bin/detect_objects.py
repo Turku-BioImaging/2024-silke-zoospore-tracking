@@ -25,36 +25,41 @@ def __draw_detection_overlay(df: pd.DataFrame, frame: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def detect_objects(
-    zarr_path: str,
-    overwrite: bool = True,
-) -> None:
-    root = zarr.open(zarr_path, mode="a")
-    raw_da = da.from_zarr(root["raw_data"])
+def detect_objects(output_dir: str, replicate: str, sample: str) -> None:
+    raw_data_zarr_path = os.path.join(
+        output_dir, replicate, sample, "image-data-zarr", "raw-data.zarr"
+    )
+    large_objects_zarr_path = os.path.join(
+        output_dir, replicate, sample, "image-data-zarr", "large-objects.zarr"
+    )
+
+    # root = zarr.open(zarr_path, mode="a")
+    raw_da = da.from_zarr(raw_data_zarr_path)
     assert raw_da.ndim == 3, "Expected 2D time-series data"
     assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
     assert raw_da.dtype == "uint8"
 
-    exclude_large_objects = da.from_zarr(root["exclusion_masks/large_objects"])
+    exclude_large_objects = da.from_zarr(large_objects_zarr_path)
 
-    frames = raw_da[:, :, :]
+    frames = raw_da[:, :, :].compute()
     exclude = exclude_large_objects
 
     # Fill exclusion areas using mean intensity
     # of the entire time series
-    mean_intensity = frames.mean().compute()
+    mean_intensity = frames.mean()
     frames[exclude] = mean_intensity
 
-    f = tp.batch(frames.compute(), diameter=5, minmass=40, separation=3)
+    f = tp.batch(frames, diameter=5, minmass=40, separation=3)
 
-    tracking_data_path = os.path.join(os.path.dirname(zarr_path), "tracking_data")
+    # tracking_data_path = os.path.join(os.path.dirname(zarr_path), "tracking_data")
+    tracking_data_path = os.path.join(output_dir, replicate, sample, "tracking-data")
     os.makedirs(tracking_data_path, exist_ok=True)
     f.to_csv(os.path.join(tracking_data_path, "detection.csv"), index=False)
 
     # save detection overlay
     detection_overlays = []
-    frames = frames.compute()
+
     for t in range(frames.shape[0]):
         overlay = __draw_detection_overlay(f[f.frame == t], frames[t])
         detection_overlays.append(da.from_array(overlay))
@@ -62,15 +67,27 @@ def detect_objects(
     detection_da = da.stack(detection_overlays)
     detection_da = detection_da.rechunk()
 
-    detection_da.to_zarr(url=zarr_path, component="detection", overwrite=overwrite)
+    # detection_da.to_zarr(url=zarr_path, component="detection", overwrite=overwrite)
+    detection_zarr_path = os.path.join(
+        output_dir, replicate, sample, "image-data-zarr", "detection.zarr"
+    )
+
+    detection_array = zarr.open(
+        detection_zarr_path,
+        mode="w",
+        shape=detection_da.shape,
+        chunks=(20, 712, 712),
+        dtype=detection_da.dtype,
+    )
+    detection_array[:] = detection_da.compute()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Detect objects")
-    parser.add_argument("--zarr-path", type=str, help="Path to Zarr file")
-    parser.add_argument(
-        "--overwrite", action="store_true", help="Overwrite existing detection data"
-    )
+    parser.add_argument("--output-dir", type=str, help="Output directory")
+    parser.add_argument("--replicate", type=str, help="Replicate name")
+    parser.add_argument("--sample", type=str, help="Sample name")
+
     args = parser.parse_args()
 
-    detect_objects(args.zarr_path, args.overwrite)
+    detect_objects(args.output_dir, args.replicate, args.sample)

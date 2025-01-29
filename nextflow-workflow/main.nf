@@ -1,6 +1,5 @@
-params.input_dir = '../data/nd2'
+params.input_dir = '../data/nd2-test'
 params.output_dir = "${projectDir}/output"
-params.output_tiff_data = true
 
 params.convert_script = "${projectDir}/bin/convert.py"
 params.exclusion_mask_script = "${projectDir}/bin/exclusion_mask.py"
@@ -24,10 +23,7 @@ workflow {
     detect_objects(make_exclusion_masks.out[0], params.output_dir, params.detect_objects_script)
     link_objects(detect_objects.out[0], params.output_dir, params.link_objects_script)
     calculate_metrics(link_objects.out[0], params.output_dir, params.metrics_script)
-
-    if (params.output_tiff_data) {
-        save_tiff_data(calculate_metrics.out[0], params.output_dir, params.tiff_data_script)
-    }
+    save_tiff_data(calculate_metrics.out[0], params.output_dir, params.tiff_data_script)
 }
 
 
@@ -38,11 +34,10 @@ process convert_to_zarr {
     path convert_script
 
     output:
-    tuple val(replicate_name), val("${nd2_path.simpleName}"), val("${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr")
-    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/"
-    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/raw_data/"
-    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/raw_data/.zattrs"
-    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data.zarr/raw_data/0.0.0"
+    tuple val(replicate_name), val("${nd2_path.simpleName}"), val("${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr")
+    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr"
+    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr/.zattrs"
+    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr/0.0.0"
 
     script:
     """
@@ -52,57 +47,57 @@ process convert_to_zarr {
 
 process make_exclusion_masks {
     input:
-    tuple val(replicate_name), val(sample_name), val(zarr_path)
+    tuple val(replicate_name), val(sample_name), val(raw_data_zarr_path)
     path output_dir
     path exclusion_mask_script
 
     output:
-    tuple val(replicate_name), val(sample_name), val(zarr_path)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/exclusion_masks/large_objects"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/exclusion_masks/large_objects/.zarray"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/exclusion_masks/large_objects/0.0.0"
+    tuple val(replicate_name), val(sample_name)
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr/.zarray"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr/0.0.0"
 
     script:
     """
-    python ${exclusion_mask_script} --zarr-path ${zarr_path} --overwrite
+    python ${exclusion_mask_script} --raw-data-zarr-path ${raw_data_zarr_path} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
     """
 }
 
 process detect_objects {
     input:
-    tuple val(replicate_name), val(sample_name), val(zarr_path)
+    tuple val(replicate_name), val(sample_name)
     path output_dir
     path detect_objects_script
 
     output:
-    tuple val(replicate_name), val(sample_name), val(zarr_path)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/detection"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/detection/.zarray"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/detection/0.0.0.0"
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/detection.csv"
+    tuple val(replicate_name), val(sample_name)
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr/.zarray"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr/0.0.0.0"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/detection.csv"
 
     script:
     """
-    python ${detect_objects_script} --zarr-path ${zarr_path} --overwrite
+    python ${detect_objects_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
     """
 }
 
 process link_objects {
     input:
-    tuple val(replicate_name), val(sample_name), val(zarr_path)
+    tuple val(replicate_name), val(sample_name)
     path output_dir
     path link_objects_script
 
     output:
     tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/.zarray"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/0.0.0.0"
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/tracking.csv"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/.zarray"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/0.0.0.0"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/tracking.csv"
 
     script:
     """
-    python ${link_objects_script} --zarr-path ${zarr_path} --overwrite
+    python ${link_objects_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
     """
 }
 
@@ -114,9 +109,9 @@ process calculate_metrics {
 
     output:
     tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/imsd.csv"
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/emsd.csv"
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/particles.csv"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/imsd.csv"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/emsd.csv"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/particles.csv"
 
     script:
     """

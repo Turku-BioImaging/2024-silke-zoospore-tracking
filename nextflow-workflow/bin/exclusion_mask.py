@@ -1,3 +1,4 @@
+import os
 import argparse
 import dask.array as da
 import numpy as np
@@ -7,19 +8,22 @@ from skimage.measure import label, regionprops
 
 
 def make_exclusion_mask(
-    zarr_path: str,
+    raw_data_zarr_path: str,
+    output_dir: str,
+    replicate: str,
+    sample: str,
     threshold_value: int = 50,
     object_min_size: int = 30,
     object_max_area: int = 3600,
-    overwrite: bool = True,
 ):
-    root = zarr.open(zarr_path, mode="a")
-    raw_da = da.from_zarr(root["raw_data"])
+    # root = zarr.open(raw_data_zarr_path, mode="a")
+    # raw_da = da.from_zarr(root["raw_data"])
+    raw_da = da.from_zarr(raw_data_zarr_path)
 
-    if "exclusion_masks" in root:
-        if "large_objects" in root["exclusion_masks"]:
-            if overwrite is False:
-                return
+    # if "exclusion_masks" in root:
+    #     if "large_objects" in root["exclusion_masks"]:
+    #         if overwrite is False:
+    #             return
 
     large_objects = []
     for t in range(raw_da.shape[0]):
@@ -37,16 +41,28 @@ def make_exclusion_mask(
 
     large_objects = da.stack(large_objects)
     large_objects = large_objects.rechunk()
-    large_objects.to_zarr(
-        url=zarr_path,
-        component="exclusion_masks/large_objects",
-        overwrite=overwrite,
+
+    large_objects_zarr_path = os.path.join(
+        output_dir, replicate, sample, "image-data-zarr", "large-objects.zarr"
     )
+
+    array = zarr.open(
+        large_objects_zarr_path,
+        mode="w",
+        shape=large_objects.shape,
+        chunks=(20, 712, 712),
+        dtype=large_objects.dtype,
+    )
+
+    array[:] = large_objects.compute()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create exclusion mask")
-    parser.add_argument("--zarr-path", type=str, help="Path to Zarr file")
+    parser.add_argument("--raw-data-zarr-path", type=str, help="Path to Zarr file")
+    parser.add_argument("--output-dir", type=str, help="Output directory")
+    parser.add_argument("--replicate", type=str, help="Replicate name")
+    parser.add_argument("--sample", type=str, help="Sample name")
     parser.add_argument(
         "--threshold-value", type=int, default=50, help="Threshold value"
     )
@@ -56,14 +72,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--object-max-area", type=int, default=3600, help="Maximum object area"
     )
-    parser.add_argument(
-        "--overwrite", action="store_true", help="Overwrite existing mask"
-    )
+
     args = parser.parse_args()
     make_exclusion_mask(
-        args.zarr_path,
+        args.raw_data_zarr_path,
+        args.output_dir,
+        args.replicate,
+        args.sample,
         args.threshold_value,
         args.object_min_size,
         args.object_max_area,
-        args.overwrite,
     )

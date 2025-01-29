@@ -222,7 +222,7 @@ def __get_particle_data_row(particle_id: int, df: pl.DataFrame) -> dict:
 
 
 def calculate_additional_data(data_dir: str, replicate: str, sample: str):
-    tracking_data_dir = os.path.join(data_dir, replicate, sample, "tracking_data")
+    tracking_data_dir = os.path.join(data_dir, replicate, sample, "tracking-data")
     tracking_csv_path = os.path.join(tracking_data_dir, "tracking.csv")
 
     df = pl.read_csv(tracking_csv_path)
@@ -274,7 +274,7 @@ def calculate_additional_data(data_dir: str, replicate: str, sample: str):
 
 
 def calculate_final_particle_tracking_data(data_dir: str, replicate: str, sample: str):
-    tracking_data_dir = os.path.join(data_dir, replicate, sample, "tracking_data")
+    tracking_data_dir = os.path.join(data_dir, replicate, sample, "tracking-data")
     tracks_csv_path = os.path.join(tracking_data_dir, "tracks.csv")
 
     if not os.path.isfile(tracks_csv_path):
@@ -293,21 +293,6 @@ def calculate_final_particle_tracking_data(data_dir: str, replicate: str, sample
     particles_df.write_csv(os.path.join(tracking_data_dir, "particles.csv"))
 
 
-def cleanup_tracking_data(data_dir: str, replicate: str, sample: str) -> None:
-    tracking_data_dir = os.path.join(data_dir, replicate, sample, "tracking_data")
-
-    detection_csv_path = os.path.join(tracking_data_dir, "detection.csv")
-    tracking_csv_path = os.path.join(tracking_data_dir, "tracking.csv")
-    tracks_csv_path = os.path.join(tracking_data_dir, "tracks.csv")
-
-    if os.path.isfile(detection_csv_path):
-        os.remove(detection_csv_path)
-    if os.path.isfile(tracking_csv_path):
-        os.remove(tracking_csv_path)
-    if os.path.isfile(tracks_csv_path):
-        os.remove(tracks_csv_path)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=str, help="Path to data directory")
@@ -317,4 +302,3 @@ if __name__ == "__main__":
 
     calculate_additional_data(args.data_dir, args.replicate, args.sample)
     calculate_final_particle_tracking_data(args.data_dir, args.replicate, args.sample)
-    # cleanup_tracking_data(args.data_dir, args.replicate, args.sample)
