@@ -90,6 +90,7 @@ process link_objects {
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/.zarray"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/0.0.0.0"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/tracking.csv"
 
     script:
     """
