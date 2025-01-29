@@ -5,6 +5,7 @@ params.overwrite = false
 params.convert_script = "${projectDir}/bin/convert.py"
 params.exclusion_mask_script = "${projectDir}/bin/exclusion_mask.py"
 params.detect_objects_script = "${projectDir}/bin/detect_objects.py"
+params.link_objects_script = "${projectDir}/bin/link_objects.py"
 
 workflow {
 
@@ -19,6 +20,7 @@ workflow {
     convert_to_zarr(nd2_files, params.output_dir, params.convert_script)
     make_exclusion_masks(convert_to_zarr.out[0], params.output_dir, params.exclusion_mask_script)
     detect_objects(make_exclusion_masks.out[0], params.output_dir, params.detect_objects_script)
+    link_objects(detect_objects.out[0], params.output_dir, params.link_objects_script)
 }
 
 
@@ -68,9 +70,29 @@ process detect_objects {
     output:
     tuple val(replicate_name), val(sample_name), val(zarr_path)
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/detection"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/detection/.zarray"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/detection/0.0.0.0"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/detection.csv"
 
     script:
     """
     python ${detect_objects_script} --zarr-path ${zarr_path} --overwrite
+    """
+}
+
+process link_objects {
+    input:
+    tuple val(replicate_name), val(sample_name), val(zarr_path)
+    path output_dir
+    path link_objects_script
+
+    output:
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/.zarray"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/0.0.0.0"
+
+    script:
+    """
+    python ${link_objects_script} --zarr-path ${zarr_path} --overwrite
     """
 }
