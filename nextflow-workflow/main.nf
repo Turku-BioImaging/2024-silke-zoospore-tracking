@@ -109,8 +109,6 @@ process calculate_metrics {
 
     output:
     tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/imsd.csv"
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/emsd.csv"
     path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/particles.csv"
 
     script:

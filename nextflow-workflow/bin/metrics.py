@@ -238,6 +238,27 @@ def calculate_additional_data(data_dir: str, replicate: str, sample: str):
 
     # write emsd and emsd data
     if len(df) == 0:
+        df = pl.DataFrame(
+            {
+                "replicate": [],
+                "sample": [],
+                "frame": [],
+                "particle": [],
+                "x": [],
+                "y": [],
+                "test": [],
+                "step_init": [],
+                "step_end": [],
+                "step_init_abs": [],
+                "step_end_abs": [],
+                "step_type": [],
+                "frame_interval": [],
+                "dx_(um)": [],
+                "dy_(um)": [],
+                "displacement_(um)": [],
+            }
+        )
+        df.write_csv(os.path.join(tracking_data_dir, "tracks.csv"))
         return
 
     fps = 1 / (df["frame_interval"][0])
