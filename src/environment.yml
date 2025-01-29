@@ -23,4 +23,4 @@ dependencies:
   - scikit-image
   - seaborn
   - tqdm
-  - zarr
+  - zarr=2.18.3

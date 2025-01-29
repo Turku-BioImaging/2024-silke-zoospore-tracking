@@ -6,6 +6,7 @@ params.convert_script = "${projectDir}/bin/convert.py"
 params.exclusion_mask_script = "${projectDir}/bin/exclusion_mask.py"
 params.detect_objects_script = "${projectDir}/bin/detect_objects.py"
 params.link_objects_script = "${projectDir}/bin/link_objects.py"
+params.metrics_script = "${projectDir}/bin/metrics.py"
 
 workflow {
 
@@ -21,6 +22,7 @@ workflow {
     make_exclusion_masks(convert_to_zarr.out[0], params.output_dir, params.exclusion_mask_script)
     detect_objects(make_exclusion_masks.out[0], params.output_dir, params.detect_objects_script)
     link_objects(detect_objects.out[0], params.output_dir, params.link_objects_script)
+    calculate_metrics(link_objects.out[0], params.output_dir, params.metrics_script)
 }
 
 
@@ -87,6 +89,7 @@ process link_objects {
     path link_objects_script
 
     output:
+    tuple val(replicate_name), val(sample_name)
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/.zarray"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/linking/0.0.0.0"
@@ -95,5 +98,22 @@ process link_objects {
     script:
     """
     python ${link_objects_script} --zarr-path ${zarr_path} --overwrite
+    """
+}
+
+process calculate_metrics {
+    input:
+    tuple val(replicate_name), val(sample_name)
+    path output_dir
+    path metrics_script
+
+    output:
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/imsd.csv"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/emsd.csv"
+    path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/particles.csv"
+
+    script:
+    """
+    PYTHONWARNINGS=ignore  python ${metrics_script} --data-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
     """
 }
