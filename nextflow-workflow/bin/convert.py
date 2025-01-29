@@ -15,7 +15,7 @@ def convert_to_zarr(nd2_path: str, output_dir: str):
     img_da = da.squeeze(img_da, axis=(1, 2))
     img_da = da.moveaxis(img_da, -1, 1)
     img_da = img_da[:, 2, :, :]
-    img_da = img_da.rechunk()
+    img_da = img_da.rechunk((20, 712, 712))
 
     metadata = dict(img.metadata)
     instrument = dict(metadata["instruments"][0])
@@ -28,14 +28,7 @@ def convert_to_zarr(nd2_path: str, output_dir: str):
 
     os.makedirs(os.path.join(output_dir, replicate_name, sample_name), exist_ok=True)
 
-    dataset = zarr.open(
-        zarr_path,
-        mode="w",
-        shape=img_da.shape,
-        chunks=(20, 712, 712),
-        dtype=img_da.dtype,
-    )
-    dataset[:] = img_da.compute()
+    img_da.to_zarr(zarr_path, overwrite=True)
 
     attrs = {
         "author": "Silke Van den Wyngaert, University of Turku",
@@ -48,6 +41,8 @@ def convert_to_zarr(nd2_path: str, output_dir: str):
             "nominal_magnification"
         ],
     }
+
+    dataset = zarr.open(zarr_path)
     dataset.attrs.update(attrs)
 
 

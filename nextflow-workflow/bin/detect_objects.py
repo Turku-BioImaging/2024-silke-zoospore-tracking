@@ -5,7 +5,6 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import trackpy as tp
-import zarr
 from skimage import color, draw
 
 tp.quiet()
@@ -72,14 +71,7 @@ def detect_objects(output_dir: str, replicate: str, sample: str) -> None:
         output_dir, replicate, sample, "image-data-zarr", "detection.zarr"
     )
 
-    detection_array = zarr.open(
-        detection_zarr_path,
-        mode="w",
-        shape=detection_da.shape,
-        chunks=(20, 712, 712),
-        dtype=detection_da.dtype,
-    )
-    detection_array[:] = detection_da.compute()
+    detection_da.to_zarr(detection_zarr_path, overwrite=True)
 
 
 if __name__ == "__main__":

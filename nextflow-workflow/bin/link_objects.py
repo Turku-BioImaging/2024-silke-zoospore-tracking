@@ -5,7 +5,6 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import trackpy as tp
-import zarr
 from scipy.spatial import ConvexHull
 from skimage import color, draw
 
@@ -93,14 +92,7 @@ def link_objects(output_dir: str, replicate: str, sample: str) -> None:
     overlay_zarr_path = os.path.join(
         output_dir, replicate, sample, "image-data-zarr", "linking.zarr"
     )
-    overlay_array = zarr.open(
-        overlay_zarr_path,
-        mode="w",
-        shape=overlay_da.shape,
-        chunks=(20, 712, 712),
-        dtype=overlay_da.dtype,
-    )
-    overlay_array[:] = overlay_da.compute()
+    overlay_da.to_zarr(overlay_zarr_path, overwrite=True)
 
 
 if __name__ == "__main__":

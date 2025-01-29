@@ -1,4 +1,4 @@
-params.input_dir = '../data/nd2-test'
+params.input_dir = '../data/nd2'
 params.output_dir = "${projectDir}/output"
 
 params.convert_script = "${projectDir}/bin/convert.py"
@@ -34,8 +34,7 @@ process convert_to_zarr {
     path convert_script
 
     output:
-    tuple val(replicate_name), val("${nd2_path.simpleName}"), val("${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr")
-    path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr"
+    tuple val(replicate_name), val("${nd2_path.simpleName}")
     path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr/.zattrs"
     path "${output_dir}/${replicate_name}/${nd2_path.simpleName}/image-data-zarr/raw-data.zarr/0.0.0"
 
@@ -47,19 +46,18 @@ process convert_to_zarr {
 
 process make_exclusion_masks {
     input:
-    tuple val(replicate_name), val(sample_name), val(raw_data_zarr_path)
+    tuple val(replicate_name), val(sample_name)
     path output_dir
     path exclusion_mask_script
 
     output:
     tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr/.zarray"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr/0.0.0"
 
     script:
     """
-    python ${exclusion_mask_script} --raw-data-zarr-path ${raw_data_zarr_path} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
+    python ${exclusion_mask_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
     """
 }
 
@@ -71,7 +69,6 @@ process detect_objects {
 
     output:
     tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr/.zarray"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr/0.0.0.0"
     path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/detection.csv"
@@ -90,7 +87,6 @@ process link_objects {
 
     output:
     tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/.zarray"
     path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/0.0.0.0"
     path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/tracking.csv"
