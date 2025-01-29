@@ -15,6 +15,9 @@ TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
 )
 
+np.random.seed(874)
+tp.linking.Linker.MAX_SUB_NET_SIZE = 10000
+
 
 def __draw_detection_overlay(df, frame, color_keys: dict):
     rgb = color.gray2rgb(frame)
@@ -22,30 +25,13 @@ def __draw_detection_overlay(df, frame, color_keys: dict):
     height, width = frame.shape
 
     for _, row in df.iterrows():
-        rr, cc = draw.circle_perimeter(int(row.y), int(row.x), 7)
+        rr, cc = draw.circle_perimeter(int(row.y), int(row.x), 5)
         valid = (rr >= 0) & (rr < height) & (cc >= 0) & (cc < width)
         rr, cc = rr[valid], cc[valid]
         particle = row.particle
         rgb[rr, cc] = color_keys[particle]
 
     return rgb
-
-
-def __validate_linking_dataset(root: Group, replicate: str, experiment: str) -> bool:
-    if replicate not in root:
-        return False
-    if experiment not in root[replicate]:
-        return False
-    if "linking" not in root[replicate][experiment]:
-        return False
-
-    dataset = root[f"{replicate}/{experiment}/linking"]
-    if "author" not in dataset.attrs:
-        return False
-    if dataset.attrs.get("author") != "Turku BioImaging":
-        return False
-
-    return True
 
 
 def __validate_csv(replicate: str, experiment: str) -> bool:
@@ -68,13 +54,11 @@ def link_detections(
 ) -> None:
     root: Group = zarr.open_group(zarr_path, mode="a")
 
-    valid_linking = __validate_linking_dataset(root, replicate, experiment)
-    valid_csv = __validate_csv(replicate, experiment)
-
-    if valid_linking and valid_csv and not overwrite:
-        return
-
-    np.random.seed(874)
+    if "linking" in root[replicate][experiment] and __validate_csv(
+        replicate, experiment
+    ):
+        if not overwrite:
+            return
 
     detection_path = os.path.join(
         TRACKING_DATA_DIR, replicate, experiment, "detection.csv"
@@ -82,9 +66,11 @@ def link_detections(
     f = pd.read_csv(detection_path)
 
     tp.quiet()
-    pred = tp.predict.NearestVelocityPredict()  # type: ignore
-    t = pred.link_df(f, search_range=8, memory=20)
-    t = tp.filter_stubs(t, 25)
+    pred = tp.predict.NearestVelocityPredict(span=20)
+    # t = pred.link_df(f, search_range=10, memory=20)
+    # t = tp.link_df(f, search_range=10, memory=20)
+    t = pred.link_df(f, search_range=35, memory=20, adaptive_stop=5, adaptive_step=0.95)
+    t = tp.filter_stubs(t, 30)  # the min number of frames a particle must be present
     t = t[t["mass"] <= 900]
     t = t[t["size"] <= 1.8]
 
@@ -98,8 +84,11 @@ def link_detections(
                 [area_covered_df, pd.DataFrame({"particle": [name], "area": [area]})]
             )
 
+    # Filter out particles that don't cover enough area.
+    # This will remove particles that have little to no movement.
+    # This setting is important in reducing the low-level noise in the data.
     area_covered_df.set_index("particle", inplace=True)
-    threshold = 5
+    threshold = 15**2  # 25 pixels squared
     particles_to_keep = area_covered_df[area_covered_df["area"] > threshold].index
 
     t = t[t["particle"].isin(particles_to_keep)]
@@ -115,13 +104,12 @@ def link_detections(
     }
 
     raw_da = da.from_zarr(root[f"{replicate}/{experiment}/raw_data"])  # type: ignore
-    assert raw_da.ndim == 4, "Expected 4D data"
-    assert raw_da.shape[1] == 3, "Expected 3 channels."
+    assert raw_da.ndim == 3, "Expected 2D time series data"
+    assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
-    assert raw_da.shape[3] == 712
     assert raw_da.dtype == "uint8"
 
-    frames = raw_da[:, 2, :, :].compute()
+    frames = raw_da[:, :, :].compute()
 
     overlay_frames = []
 

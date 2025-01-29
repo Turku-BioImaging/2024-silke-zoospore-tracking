@@ -100,11 +100,19 @@ def _calculate_direction_change_frequency(particle_df: pl.DataFrame) -> float:
     return direction_change_frequency
 
 
-def _calculate_area_covered(particle_df: pl.DataFrame) -> float:
+# def _calculate_area_covered(particle_df: pl.DataFrame) -> float:
+#     points = particle_df.select(["x", "y"])
+#     hull = ConvexHull(points.to_numpy())
+#     area = hull.volume * PIXEL_SIZE**2
+#     return area
+
+
+def _calculate_equivalent_diameter(particle_df: pl.DataFrame) -> float:
     points = particle_df.select(["x", "y"])
     hull = ConvexHull(points.to_numpy())
     area = hull.volume * PIXEL_SIZE**2
-    return area
+
+    return 2 * np.sqrt(area / np.pi)
 
 
 def _get_particle_data(particle_id: int, df: pl.DataFrame) -> dict:
@@ -114,7 +122,8 @@ def _get_particle_data(particle_id: int, df: pl.DataFrame) -> dict:
     curvilinear_velocity = _calculate_curvilinear_velocity(particle_df)
     directionality_ratio = _calculate_directionality_ratio(particle_df)
     straight_line_velocity = _calculate_straight_line_velocity(particle_df)
-    area_covered = _calculate_area_covered(particle_df)
+    # area_covered = _calculate_area_covered(particle_df)
+    equivalent_diameter = _calculate_equivalent_diameter(particle_df)
     direction_change_frequency = _calculate_direction_change_frequency(particle_df)
 
     return {
@@ -126,7 +135,8 @@ def _get_particle_data(particle_id: int, df: pl.DataFrame) -> dict:
         "curvilinear_velocity_(um/s)": curvilinear_velocity["curvilinear_velocity"],
         "straight_line_velocity_(um/s)": straight_line_velocity,
         "directionality_ratio": directionality_ratio["directionality_ratio"],
-        "area_covered_(um^2)": area_covered,
+        # "area_covered_(um^2)": area_covered,
+        "equivalent_diameter_(um)": equivalent_diameter,
         "direction_change_frequency_(Hz)": direction_change_frequency,
     }
 
@@ -142,6 +152,10 @@ def process_all_data():
 
     def process_tracking_data(td):
         csv_path = os.path.join(TRACKING_DATA_DIR, td[0], td[1], "tracks.csv")
+
+        if not os.path.isfile(csv_path):
+            return
+
         df = pl.read_csv(csv_path)
         particle_ids = (
             df.select(pl.col("particle"))

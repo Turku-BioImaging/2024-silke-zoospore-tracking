@@ -17,6 +17,11 @@ PIXEL_SIZE = constants.PIXEL_SIZE
 FRAME_INTERVAL_REGULAR = constants.FRAME_INTERVAL_REGULAR
 FRAME_INTERVAL_LOW_LIGHT = constants.FRAME_INTERVAL_LOW_LIGHT
 
+with open(
+    os.path.join(os.path.dirname(__file__), "light_intensity_codes.json"), "r"
+) as f:
+    light_intensity_codes = json.load(f)
+
 
 def classify_sample(replicate: str, sample: str, light_intensity_codes: dict) -> dict:
     # Get code of init light level
@@ -114,12 +119,7 @@ def calculate_speeds(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def main():
-    with open(
-        os.path.join(os.path.dirname(__file__), "light_intensity_codes.json"), "r"
-    ) as f:
-        light_intensity_codes = json.load(f)
-
+def process_all_tracks():
     tracks_data = [
         (replicate, sample)
         for replicate in os.listdir(TRACKING_DATA_DIR)
@@ -143,6 +143,8 @@ def main():
         df = calculate_speeds(df)
 
         # write imsd and emsd data
+        if len(df) == 0:
+            return
         fps = 1 / (df["frame_interval"][0])
         df_pandas = df.to_pandas()
         im = tp.imsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
@@ -180,9 +182,11 @@ def main():
 
     Parallel(n_jobs=-1)(
         delayed(process_tracks_data)(replicate, experiment)
-        for replicate, experiment in tqdm(tracks_data)
+        for replicate, experiment in tqdm(
+            tracks_data, desc="Generating additional tracking data"
+        )
     )
 
 
 if __name__ == "__main__":
-    main()
+    process_all_tracks()

@@ -1,14 +1,16 @@
 """
-Converts raw data to Zarr format
+Converts ND2 raw data to Zarr format
 """
-import os
 
-from multiprocessing import cpu_count
+import os
 from glob import glob
+
+import bioio_nd2
+import dask.array as da
 import zarr
-from aicsimageio import AICSImage as aic
-import numpy as np
+from bioio import BioImage
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "nd2")
 ZARR_PATH = os.path.join(
@@ -16,14 +18,32 @@ ZARR_PATH = os.path.join(
 )
 
 
-def process_sample(sample_name):
-    img = aic(os.path.join(DATA_DIR, parent_dir, f"{sample_name}.nd2"))
-    img_data = img.data
-    img_data = np.squeeze(img_data, axis=(1, 2))
-    img_data = np.moveaxis(img_data, -1, 1)
+def process_sample(sample_name, overwrite=False):
+    if not overwrite:
+        if f"{parent_dir}/{sample_name}/raw_data" in root:
+            return
+
+    img = BioImage(
+        os.path.join(DATA_DIR, parent_dir, f"{sample_name}.nd2"),
+        reader=bioio_nd2.Reader,
+    )
+
+    img_da = img.dask_data
+    img_da = da.squeeze(img_da, axis=(1, 2))
+    img_da = da.moveaxis(img_da, -1, 1)
+    img_da = img_da[:, 2, :, :]
+    img_da = img_da.rechunk()
 
     metadata = dict(img.metadata)
     instrument = dict(metadata["instruments"][0])
+
+    print(f"Writing {parent_dir}/{sample_name}")
+
+    dataset = root.create_dataset(
+        f"{parent_dir}/{sample_name}/raw_data",
+        data=img_da.compute(),
+        chunks=(20, 712, 712),
+    )
 
     attrs = {
         "author": "Silke Van den Wyngaert, University of Turku",
@@ -36,11 +56,6 @@ def process_sample(sample_name):
             "nominal_magnification"
         ],
     }
-
-    print(f"Writing {parent_dir}/{sample_name}")
-    dataset = root.create_dataset(
-        f"{parent_dir}/{sample_name}/raw_data", data=img_data, chunks=(200, 1, 256, 256)
-    )
     dataset.attrs.update(attrs)
 
 
@@ -49,9 +64,7 @@ if __name__ == "__main__":
         d for d in os.listdir(DATA_DIR) if os.path.isdir(os.path.join(DATA_DIR, d))
     ]
 
-    root = zarr.open(ZARR_PATH, mode="w")
-
-    n_jobs = max(cpu_count() - 4, 1)
+    root = zarr.open(ZARR_PATH, mode="a")
 
     for parent_dir in parent_dirs:
         sample_names = [
@@ -59,6 +72,6 @@ if __name__ == "__main__":
             for f in glob(os.path.join(DATA_DIR, parent_dir, "*.nd2"))
         ]
 
-        Parallel(n_jobs=n_jobs)(
-            delayed(process_sample)(sample_name) for sample_name in sample_names
+        Parallel(n_jobs=-1)(
+            delayed(process_sample)(sample_name) for sample_name in tqdm(sample_names)
         )
