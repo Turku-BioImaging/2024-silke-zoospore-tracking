@@ -317,4 +317,4 @@ if __name__ == "__main__":
 
     calculate_additional_data(args.data_dir, args.replicate, args.sample)
     calculate_final_particle_tracking_data(args.data_dir, args.replicate, args.sample)
-    cleanup_tracking_data(args.data_dir, args.replicate, args.sample)
+    # cleanup_tracking_data(args.data_dir, args.replicate, args.sample)

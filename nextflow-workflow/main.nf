@@ -1,12 +1,13 @@
 params.input_dir = '../data/nd2-test'
 params.output_dir = "${projectDir}/output"
-params.overwrite = false
+params.output_tiff_data = true
 
 params.convert_script = "${projectDir}/bin/convert.py"
 params.exclusion_mask_script = "${projectDir}/bin/exclusion_mask.py"
 params.detect_objects_script = "${projectDir}/bin/detect_objects.py"
 params.link_objects_script = "${projectDir}/bin/link_objects.py"
 params.metrics_script = "${projectDir}/bin/metrics.py"
+params.tiff_data_script = "${projectDir}/bin/tiff_data.py"
 
 workflow {
 
@@ -23,6 +24,10 @@ workflow {
     detect_objects(make_exclusion_masks.out[0], params.output_dir, params.detect_objects_script)
     link_objects(detect_objects.out[0], params.output_dir, params.link_objects_script)
     calculate_metrics(link_objects.out[0], params.output_dir, params.metrics_script)
+
+    if (params.output_tiff_data) {
+        save_tiff_data(calculate_metrics.out[0], params.output_dir, params.tiff_data_script)
+    }
 }
 
 
@@ -108,6 +113,7 @@ process calculate_metrics {
     path metrics_script
 
     output:
+    tuple val(replicate_name), val(sample_name)
     path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/imsd.csv"
     path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/emsd.csv"
     path "${output_dir}/${replicate_name}/${sample_name}/tracking_data/particles.csv"
@@ -115,5 +121,22 @@ process calculate_metrics {
     script:
     """
     PYTHONWARNINGS=ignore  python ${metrics_script} --data-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
+    """
+}
+
+process save_tiff_data {
+    input:
+    tuple val(replicate_name), val(sample_name)
+    path output_dir
+    path tiff_data_script
+
+    output:
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-tiff/raw_data.tif"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-tiff/detection.tif"
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data-tiff/linking.tif"
+
+    script:
+    """
+    python ${tiff_data_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
     """
 }
