@@ -1,8 +1,10 @@
 params.input_dir = '../data/nd2-test'
 params.output_dir = "${projectDir}/output"
 params.overwrite = false
+
 params.convert_script = "${projectDir}/bin/convert.py"
 params.exclusion_mask_script = "${projectDir}/bin/exclusion_mask.py"
+params.detect_objects_script = "${projectDir}/bin/detect_objects.py"
 
 workflow {
 
@@ -16,6 +18,7 @@ workflow {
 
     convert_to_zarr(nd2_files, params.output_dir, params.convert_script)
     make_exclusion_masks(convert_to_zarr.out[0], params.output_dir, params.exclusion_mask_script)
+    detect_objects(make_exclusion_masks.out[0], params.output_dir, params.detect_objects_script)
 }
 
 
@@ -53,5 +56,21 @@ process make_exclusion_masks {
     script:
     """
     python ${exclusion_mask_script} --zarr-path ${zarr_path} --overwrite
+    """
+}
+
+process detect_objects {
+    input:
+    tuple val(replicate_name), val(sample_name), val(zarr_path)
+    path output_dir
+    path detect_objects_script
+
+    output:
+    tuple val(replicate_name), val(sample_name), val(zarr_path)
+    path "${output_dir}/${replicate_name}/${sample_name}/image-data.zarr/detection"
+
+    script:
+    """
+    python ${detect_objects_script} --zarr-path ${zarr_path} --overwrite
     """
 }
