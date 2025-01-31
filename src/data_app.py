@@ -152,7 +152,21 @@ def update_graph(selected_replicates: list, selected_metric: str, selected_steps
     # print(selected_metric)
     filtered_metric = list(filter(lambda x: x["value"] == selected_metric, METRICS))
 
-    fig = px.strip(
+    # fig = px.strip(
+    #     filtered_particles_df,
+    #     y=selected_metric,
+    #     color="replicate",
+    #     facet_col="step",
+    #     facet_col_wrap=10,
+    #     height=1024,
+    #     labels={selected_metric: filtered_metric[0]["label"]},
+    #     template="plotly_dark",
+    #     category_orders={
+    #         "step": sorted(filtered_particles_df["step"].unique(), reverse=True)
+    #     },
+    # )
+    
+    fig = px.violin(
         filtered_particles_df,
         y=selected_metric,
         color="replicate",
