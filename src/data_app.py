@@ -2,18 +2,20 @@
 Run this script to start the Dash app that displays the particle tracking data.
 """
 
-from dash import Dash, Input, Output, callback_context
+import argparse
+import os
+
+import dash_bootstrap_components as dbc
 import plotly.express as px
 import polars as pl
-import dash_bootstrap_components as dbc
-import os
-from tqdm import tqdm
-from joblib import Parallel, delayed
-import random
-from visualization.layout import create_layout
+from dash import Dash, Input, Output, callback_context
 from dotenv import load_dotenv
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "tracking_data")
+from visualization.layout import create_layout
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "output")
 METRICS = [
     {
         "label": "Average speed (um/s)",
@@ -32,8 +34,8 @@ METRICS = [
         "value": "directionality_ratio",
     },
     {
-        "label": "Area covered (um^2)",
-        "value": "area_covered_(um^2)",
+        "label": "Equivalent diameter (um)",
+        "value": "equivalent_diameter_(um)",
     },
     {
         "label": "Direction change frequency (Hz)",
@@ -41,14 +43,24 @@ METRICS = [
     },
 ]
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--data-dir",
+    type=str,
+    default=DATA_DIR,
+    help="Path to the directory containing the particle tracking data",
+)
 
-def load_particle_data() -> pl.DataFrame:
+args = parser.parse_args()
+
+
+def load_particle_data(data_dir: str) -> pl.DataFrame:
     sample_data = [
         (replicate, sample)
-        for replicate in os.listdir(DATA_DIR)
-        if os.path.isdir(os.path.join(DATA_DIR, replicate))
-        for sample in os.listdir(os.path.join(DATA_DIR, replicate))
-        if os.path.isdir(os.path.join(DATA_DIR, replicate, sample))
+        for replicate in os.listdir(data_dir)
+        if os.path.isdir(os.path.join(data_dir, replicate))
+        for sample in os.listdir(os.path.join(data_dir, replicate))
+        if os.path.isdir(os.path.join(data_dir, replicate, sample))
     ]
 
     def __compile_particle_data(td):
@@ -71,8 +83,6 @@ def load_particle_data() -> pl.DataFrame:
                 "replicate": replicate,
                 "sample": sample,
                 "test": test,
-            # "step_init_abs": step_init_abs,
-            # "step_end_abs": step_end_abs,
                 "step": f"{step_init_abs}-{step_end_abs}",
             }
 
@@ -95,25 +105,31 @@ def load_particle_data() -> pl.DataFrame:
         ]
     )
 
-
     return all_particle_df
 
 
-particles_df = load_particle_data()
+particles_df = load_particle_data(args.data_dir)
+
 
 # Load environment variables from a .env file
 # load_dotenv()
 
+
 def _get_url_base_pathname():
     load_dotenv(dotenv_path=".env")
     load_dotenv(dotenv_path=".env.local")
-    
-    if os.getenv('URL_BASE_PATHNAME'):
-        return os.getenv('URL_BASE_PATHNAME')
+
+    if os.getenv("URL_BASE_PATHNAME"):
+        return os.getenv("URL_BASE_PATHNAME")
     else:
         return "/"
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.SLATE], url_base_pathname=_get_url_base_pathname())
+
+app = Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.SLATE],
+    url_base_pathname=_get_url_base_pathname(),
+)
 app.layout = create_layout(
     replicates=sorted(particles_df["replicate"].unique().to_list()),
     metrics=METRICS,
@@ -174,5 +190,4 @@ def update_steps_dropdown(select_all_clicks, select_none_clicks):
     return sorted(particles_df["step"].unique(), reverse=True)
 
 
-if __name__ == "__main__":
-    app.run_server(debug=True)
+app.run_server(debug=True)
