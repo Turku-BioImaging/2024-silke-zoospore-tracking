@@ -51,36 +51,42 @@ def load_particle_data() -> pl.DataFrame:
         if os.path.isdir(os.path.join(DATA_DIR, replicate, sample))
     ]
 
-    # random.shuffle(sample_data)
-
-    def compile_particle_data(td):
+    def __compile_particle_data(td):
         replicate, sample = td
-        tracks_df = pl.read_csv(os.path.join(DATA_DIR, replicate, sample, "tracks.csv"))
-        particle_df = pl.read_csv(
-            os.path.join(DATA_DIR, replicate, sample, "particles.csv")
-        )
+        try:
+            tracks_df = pl.read_csv(
+                os.path.join(data_dir, replicate, sample, "tracking-data", "tracks.csv")
+            )
+            particle_df = pl.read_csv(
+                os.path.join(
+                    data_dir, replicate, sample, "tracking-data", "particles.csv"
+                )
+            )
 
-        test = tracks_df["test"][0]
-        step_init_abs = str(tracks_df["step_init_abs"][0]).zfill(2)
-        step_end_abs = str(tracks_df["step_end_abs"][0]).zfill(2)
+            test = tracks_df["test"][0]
+            step_init_abs = str(tracks_df["step_init_abs"][0]).zfill(2)
+            step_end_abs = str(tracks_df["step_end_abs"][0]).zfill(2)
 
-        data_dict = {
-            "replicate": replicate,
-            "sample": sample,
-            "test": test,
+            data_dict = {
+                "replicate": replicate,
+                "sample": sample,
+                "test": test,
             # "step_init_abs": step_init_abs,
             # "step_end_abs": step_end_abs,
-            "step": f"{step_init_abs}-{step_end_abs}",
-        }
+                "step": f"{step_init_abs}-{step_end_abs}",
+            }
 
-        return pl.DataFrame({**data_dict, **particle_df.to_dict()})
+            return pl.DataFrame({**data_dict, **particle_df.to_dict()})
+        except Exception as e:
+            if isinstance(e, pl.exceptions.NoDataError):
+                return pl.DataFrame()
 
     all_particle_df = Parallel(n_jobs=-1)(
-        delayed(compile_particle_data)(td)
+        delayed(__compile_particle_data)(td)
         for td in tqdm(sample_data, desc="Loading particle data")
     )
 
-    all_particle_df = pl.concat(all_particle_df)
+    all_particle_df = pl.concat([df for df in all_particle_df if not df.is_empty()])
     all_particle_df = all_particle_df.sort(
         [
             "replicate",
