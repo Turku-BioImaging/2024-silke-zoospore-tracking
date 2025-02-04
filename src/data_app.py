@@ -2,7 +2,6 @@
 Run this script to start the Dash app that displays the particle tracking data.
 """
 
-import argparse
 import os
 
 import dash_bootstrap_components as dbc
@@ -15,7 +14,8 @@ from tqdm import tqdm
 
 from visualization.layout import create_layout
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "output")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "tracking-data")
+
 METRICS = [
     {
         "label": "Average speed (um/s)",
@@ -43,18 +43,8 @@ METRICS = [
     },
 ]
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--data-dir",
-    type=str,
-    default=DATA_DIR,
-    help="Path to the directory containing the particle tracking data",
-)
 
-args = parser.parse_args()
-
-
-def load_particle_data(data_dir: str) -> pl.DataFrame:
+def load_particle_data(data_dir: str = DATA_DIR) -> pl.DataFrame:
     sample_data = [
         (replicate, sample)
         for replicate in os.listdir(data_dir)
@@ -66,14 +56,13 @@ def load_particle_data(data_dir: str) -> pl.DataFrame:
     def __compile_particle_data(td):
         replicate, sample = td
         try:
-            tracks_df = pl.read_csv(
-                os.path.join(data_dir, replicate, sample, "tracking-data", "tracks.csv")
+            tracks_csv_path = os.path.join(data_dir, replicate, sample, "tracks.csv")
+            particles_csv_path = os.path.join(
+                data_dir, replicate, sample, "particles.csv"
             )
-            particle_df = pl.read_csv(
-                os.path.join(
-                    data_dir, replicate, sample, "tracking-data", "particles.csv"
-                )
-            )
+
+            tracks_df = pl.read_csv(tracks_csv_path)
+            particle_df = pl.read_csv(particles_csv_path)
 
             test = tracks_df["test"][0]
             step_init_abs = str(tracks_df["step_init_abs"][0]).zfill(2)
@@ -88,7 +77,9 @@ def load_particle_data(data_dir: str) -> pl.DataFrame:
 
             return pl.DataFrame({**data_dict, **particle_df.to_dict()})
         except Exception as e:
-            if isinstance(e, pl.exceptions.NoDataError):
+            if isinstance(e, pl.exceptions.NoDataError) or isinstance(
+                e, FileNotFoundError
+            ):
                 return pl.DataFrame()
 
     all_particle_df = Parallel(n_jobs=-1)(
@@ -108,11 +99,7 @@ def load_particle_data(data_dir: str) -> pl.DataFrame:
     return all_particle_df
 
 
-particles_df = load_particle_data(args.data_dir)
-
-
-# Load environment variables from a .env file
-# load_dotenv()
+particles_df = load_particle_data(DATA_DIR)
 
 
 def _get_url_base_pathname():
@@ -130,6 +117,10 @@ app = Dash(
     external_stylesheets=[dbc.themes.SLATE],
     url_base_pathname=_get_url_base_pathname(),
 )
+
+server = app.server
+
+
 app.layout = create_layout(
     replicates=sorted(particles_df["replicate"].unique().to_list()),
     metrics=METRICS,
@@ -149,23 +140,8 @@ def update_graph(selected_replicates: list, selected_metric: str, selected_steps
         & (pl.col("step").is_in(selected_steps))
     )
 
-    # print(selected_metric)
     filtered_metric = list(filter(lambda x: x["value"] == selected_metric, METRICS))
 
-    # fig = px.strip(
-    #     filtered_particles_df,
-    #     y=selected_metric,
-    #     color="replicate",
-    #     facet_col="step",
-    #     facet_col_wrap=10,
-    #     height=1024,
-    #     labels={selected_metric: filtered_metric[0]["label"]},
-    #     template="plotly_dark",
-    #     category_orders={
-    #         "step": sorted(filtered_particles_df["step"].unique(), reverse=True)
-    #     },
-    # )
-    
     fig = px.violin(
         filtered_particles_df,
         y=selected_metric,
@@ -204,4 +180,5 @@ def update_steps_dropdown(select_all_clicks, select_none_clicks):
     return sorted(particles_df["step"].unique(), reverse=True)
 
 
-app.run_server(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
