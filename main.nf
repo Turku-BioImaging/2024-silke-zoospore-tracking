@@ -1,23 +1,37 @@
-
 workflow {
 
-    rawDataChannel = Channel
-        .fromPath("${params.rawDataDir}/*/*.nd2")
+    rawDataChannel = Channel.fromPath("${params.rawDataDir}/*/*.nd2")
         .map { filePath ->
             def replicateName = file(filePath).parent.baseName
             def sampleName = file(filePath).baseName
             return [filePath, replicateName, sampleName]
         }
         .take(1)
-        // .view()
+    // .view()
 
 
-    ConvertND2ToZarr(rawDataChannel)
+    ConvertND2ToZarr(rawDataChannel).set { rawDataZarrChannel }
     MakeExclusionMasks(ConvertND2ToZarr.out)
-    DetectObjects(MakeExclusionMasks.out)
-    LinkObjects(DetectObjects.out[0], DetectObjects.out[1])
-    CalculateMetrics(LinkObjects.out[0], LinkObjects.out[1])
-    // save_tiff_data(calculate_metrics.out[0], params.output_dir, params.tiff_data_script)
+    DetectObjects(MakeExclusionMasks.out).set { detectObjectsChannel }
+    LinkObjects(DetectObjects.out).set { linkObjectsChannel }
+    CalculateMetrics(LinkObjects.out)
+
+
+    tiffDataChannel = rawDataZarrChannel
+        .combine(detectObjectsChannel, by: [0, 1])
+        .combine(linkObjectsChannel, by: [0, 1])
+        .map { i ->
+            def replicateName = i[0]
+            def sampleName = i[1]
+            def rawDataZarr = i[2]
+            def detectionZarr = i[4]
+            def linkingZarr = i[7]
+
+            return tuple(replicateName, sampleName, rawDataZarr, detectionZarr, linkingZarr)
+        }
+        .view()
+
+    SaveTiffData(tiffDataChannel)
 }
 
 
@@ -59,8 +73,7 @@ process DetectObjects {
     tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('large-objects.zarr')
 
     output:
-    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('large-objects.zarr'), emit: mainMetadata
-    tuple path('detection.zarr'), path('detection.csv'), emit: detectionMetadata
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('detection.zarr'), path('detection.csv')
 
     script:
     """
@@ -74,12 +87,10 @@ process LinkObjects {
     publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: "copy", pattern: "linking.{zarr,csv}"
 
     input:
-    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('large-objects.zarr')
-    tuple path('detection.zarr'), path('detection.csv')
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('detection.zarr'), path('detection.csv')
 
     output:
-    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), emit: mainMetadata    
-    tuple path('linking.zarr'), path('linking.csv'), emit: linkingMetadata
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('linking.zarr'), path('linking.csv')
 
     script:
     """
@@ -93,12 +104,10 @@ process CalculateMetrics {
     publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: 'copy', pattern: '*.csv'
 
     input:
-    tuple val(replicateName), val(sampleName), path('raw-data.zarr')
-    tuple path('linking.zarr'), path('linking.csv')
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('linking.zarr'), path('linking.csv')
 
     output:
-    tuple val(replicateName), val(sampleName), path('raw-data.zarr')
-    tuple path('particles.csv'), path('emsd.csv'), path('imsd.csv')
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('particles.csv'), path('emsd.csv'), path('imsd.csv')
 
     script:
     """
@@ -109,19 +118,20 @@ process CalculateMetrics {
     """
 }
 
-process save_tiff_data {
+process SaveTiffData {
+    publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: 'copy', pattern: '*.tif'
+
     input:
-    tuple val(replicate_name), val(sample_name)
-    path output_dir
-    path tiff_data_script
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('detection.zarr'), path('linking.zarr')
 
     output:
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-tiff/raw_data.tif"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-tiff/detection.tif"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-tiff/linking.tif"
+    tuple path('raw-data.tif'), path('detection.tif'), path('linking.tif')
 
     script:
     """
-    python ${tiff_data_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
+    save_tiff_data.py \
+        --raw-data-zarr raw-data.zarr \
+        --detection-zarr detection.zarr \
+        --linking-zarr linking.zarr
     """
 }

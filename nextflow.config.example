@@ -22,9 +22,4 @@ process {
         cpus = 16
         memory = 16.GB
     }
-
-    withName: save_tiff_data {
-        cpus = 8
-        memory = '32 GB'
-    }
 }

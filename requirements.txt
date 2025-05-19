@@ -6,6 +6,7 @@ pandas
 polars==1.2
 pyarrow
 scikit-image
+tifffile
 trackpy==0.6.4
 zarr==3.0.7
 
