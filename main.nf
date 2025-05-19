@@ -22,6 +22,7 @@ workflow {
 
 
     ConvertND2ToZarr(rawDataChannel)
+    MakeExclusionMasks(ConvertND2ToZarr.out)
     // make_exclusion_masks(convert_to_zarr.out[0], params.output_dir, params.exclusion_mask_script)
     // detect_objects(make_exclusion_masks.out[0], params.output_dir, params.detect_objects_script)
     // link_objects(detect_objects.out[0], params.output_dir, params.link_objects_script)
@@ -37,8 +38,7 @@ process ConvertND2ToZarr {
     tuple path(nd2Path), val(replicateName), val(sampleName)
 
     output:
-    tuple path(nd2Path), val(replicateName), val(sampleName), path("raw-data.zarr")
-
+    tuple val(replicateName), val(sampleName), path("raw-data.zarr")
 
     script:
     """
@@ -47,20 +47,18 @@ process ConvertND2ToZarr {
     """
 }
 
-process make_exclusion_masks {
+process MakeExclusionMasks {
+    publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: "copy", pattern: "large-objects.zarr"
+    
     input:
-    tuple val(replicate_name), val(sample_name)
-    path output_dir
-    path exclusion_mask_script
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr')
 
     output:
-    tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr/.zarray"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/large-objects.zarr/0.0.0"
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('large-objects.zarr')
 
     script:
     """
-    python ${exclusion_mask_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
+    make_exclusion_masks.py --zarr-path raw-data.zarr
     """
 }
 
