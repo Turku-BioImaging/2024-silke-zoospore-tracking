@@ -1,5 +1,6 @@
+#! /usr/bin/env python
+
 import argparse
-import os
 import re
 
 import numpy as np
@@ -221,11 +222,8 @@ def __get_particle_data_row(particle_id: int, df: pl.DataFrame) -> dict:
     }
 
 
-def calculate_additional_data(data_dir: str, replicate: str, sample: str):
-    tracking_data_dir = os.path.join(data_dir, replicate, sample, "tracking-data")
-    tracking_csv_path = os.path.join(tracking_data_dir, "tracking.csv")
-
-    df = pl.read_csv(tracking_csv_path)
+def _calculate_additional_tracking_data(replicate: str, sample: str):
+    df = pl.read_csv("linking.csv")
 
     if "Unnamed: 0" in df.columns:
         df = df.drop("Unnamed: 0")
@@ -258,16 +256,16 @@ def calculate_additional_data(data_dir: str, replicate: str, sample: str):
                 "displacement_(um)": [],
             }
         )
-        df.write_csv(os.path.join(tracking_data_dir, "tracks.csv"))
+        df.write_csv("tracks.csv")
         return
 
     fps = 1 / (df["frame_interval"][0])
     df_pandas = df.to_pandas()
     im = tp.imsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-    im.to_csv(os.path.join(tracking_data_dir, "imsd.csv"))
+    im.to_csv("imsd.csv")
 
     em = tp.emsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-    em.to_csv(os.path.join(tracking_data_dir, "emsd.csv"))
+    em.to_csv("emsd.csv")
 
     # write additional tracking data
     df = df.select(
@@ -291,17 +289,11 @@ def calculate_additional_data(data_dir: str, replicate: str, sample: str):
         ]
     )
 
-    df.write_csv(os.path.join(tracking_data_dir, "tracks.csv"))
+    df.write_csv("additional-tracking-data.csv")
 
 
-def calculate_final_particle_tracking_data(data_dir: str, replicate: str, sample: str):
-    tracking_data_dir = os.path.join(data_dir, replicate, sample, "tracking-data")
-    tracks_csv_path = os.path.join(tracking_data_dir, "tracks.csv")
-
-    if not os.path.isfile(tracks_csv_path):
-        return
-
-    df = pl.read_csv(tracks_csv_path)
+def _calculate_final_particle_tracking_data():
+    df = pl.read_csv("additional-tracking-data.csv")
     particle_ids = (
         df.select(pl.col("particle")).unique().sort("particle").to_series().to_list()
     )
@@ -311,15 +303,20 @@ def calculate_final_particle_tracking_data(data_dir: str, replicate: str, sample
         particle_data.append(__get_particle_data_row(particle_id, df))
 
     particles_df = pl.DataFrame(particle_data)
-    particles_df.write_csv(os.path.join(tracking_data_dir, "particles.csv"))
+    particles_df.write_csv("particles.csv")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", type=str, help="Path to data directory")
-    parser.add_argument("--replicate", type=str, help="Replicate name")
-    parser.add_argument("--sample", type=str, help="Sample name")
+
+    parser.add_argument(
+        "--replicate-name", type=str, required=True, help="Replicate name"
+    )
+    parser.add_argument("--sample-name", type=str, required=True, help="Sample name")
+    parser.add_argument(
+        "--linking-csv", type=str, required=True, help="Path to linking csv file"
+    )
     args = parser.parse_args()
 
-    calculate_additional_data(args.data_dir, args.replicate, args.sample)
-    calculate_final_particle_tracking_data(args.data_dir, args.replicate, args.sample)
+    _calculate_additional_tracking_data(args.replicate_name, args.sample_name)
+    _calculate_final_particle_tracking_data()

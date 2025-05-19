@@ -1,0 +1,25 @@
+// Example configuration for running on supercompute resource
+// Make a local copy of this file and override it
+
+workDir = <path to work directory>
+
+params {
+    rawDataDir = <path to ND2 raw data>
+    outputDir = <path to output directory>
+}
+
+process {
+    executor = 'local'
+    memory = '4 GB'
+    cpus = 4
+
+    withName: DetectObjects {
+        cpus = 16
+        memory = 16.GB
+    }
+
+    withName: LinkObjects {
+        cpus = 16
+        memory = 16.GB
+    }
+}

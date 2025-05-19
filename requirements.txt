@@ -1,0 +1,12 @@
+# python 3.12
+dask==2025.5.0
+nextflow==25.4.2
+numba
+pandas
+polars==1.2
+pyarrow
+scikit-image
+tifffile
+trackpy==0.6.4
+zarr==3.0.7
+
