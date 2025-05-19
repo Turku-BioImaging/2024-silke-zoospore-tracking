@@ -6,8 +6,6 @@ workflow {
             def sampleName = file(filePath).baseName
             return [filePath, replicateName, sampleName]
         }
-        .take(1)
-    // .view()
 
 
     ConvertND2ToZarr(rawDataChannel).set { rawDataZarrChannel }
@@ -29,7 +27,6 @@ workflow {
 
             return tuple(replicateName, sampleName, rawDataZarr, detectionZarr, linkingZarr)
         }
-        .view()
 
     SaveTiffData(tiffDataChannel)
 }
