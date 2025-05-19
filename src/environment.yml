@@ -9,15 +9,13 @@ dependencies:
   - pandas
   - polars=1.2
   - pip:
-      - alive-progress
-      - bioio
-      - bioio-nd2
-      - dask
-      - python_dotenv
-      - dash
-      - dash-bootstrap-components
-      - plotly
+      - aicsimageio
+      - aicsimageio[nd2]
+      - duckdb
+      - duckdb-engine
       # - https://github.com/soft-matter/trackpy/archive/refs/tags/v0.6.2rc1.zip
+      - sqlalchemy
+      - sqlite
       - trackpy==0.6.4
   - python=3.10
   - scikit-image

@@ -2,15 +2,21 @@ import json
 import os
 import re
 
+import constants
+import numpy as np
+import duckdb
+import pandas as pd
 import polars as pl
 import trackpy as tp
 from joblib import Parallel, delayed
-from tqdm import tqdm
-
-import constants
+import sqlite3
 
 TRACKING_DATA_DIR = os.path.join(
     os.path.dirname(__file__), "..", "data", "tracking_data"
+)
+
+DATABASE_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "data", "database", "tracking.db"
 )
 
 PIXEL_SIZE = constants.PIXEL_SIZE
@@ -98,18 +104,18 @@ def calculate_speeds(df: pl.DataFrame) -> pl.DataFrame:
     df = df.with_columns(
         [
             ((pl.col("x") - pl.col("x").shift(1)).over("particle") * PIXEL_SIZE).alias(
-                "dx_(um)"
+                "dx_um"
             ),
             ((pl.col("y") - pl.col("y").shift(1)).over("particle") * PIXEL_SIZE).alias(
-                "dy_(um)"
+                "dy_um"
             ),
         ]
     )
 
     df = df.with_columns(
-        (pl.col("dx_(um)").pow(2) + pl.col("dy_(um)").pow(2))
+        (pl.col("dx_um").pow(2) + pl.col("dy_um").pow(2))
         .sqrt()
-        .alias("displacement_(um)"),
+        .alias("displacement_um"),
     )
 
     # df = df.with_columns(
@@ -119,7 +125,27 @@ def calculate_speeds(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-def process_all_tracks():
+def main():
+    # conn = sqlite3.connect(DATABASE_PATH)
+
+    with open(
+        os.path.join(os.path.dirname(__file__), "light_intensity_codes.json"), "r"
+    ) as f:
+        light_intensity_codes = json.load(f)
+
+    # init database
+    conn = sqlite3.connect(DATABASE_PATH)
+
+    cur = conn.cursor()
+    with open(
+        os.path.join(os.path.dirname(__file__), "sql", "create_tables.sql"), "r"
+    ) as f:
+        cur.executescript(f.read())
+
+    conn.commit()
+    conn.close()
+
+    # gather replicate and sample data dirs
     tracks_data = [
         (replicate, sample)
         for replicate in os.listdir(TRACKING_DATA_DIR)
@@ -142,24 +168,20 @@ def process_all_tracks():
 
         df = calculate_speeds(df)
 
-        # write imsd and emsd data
-        if len(df) == 0:
-            return
-        fps = 1 / (df["frame_interval"][0])
-        df_pandas = df.to_pandas()
-        im = tp.imsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-        im.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "imsd.csv"))
+        # # write imsd and emsd data
+        # fps = 1 / (df["frame_interval"][0])
+        # df_pandas = df.to_pandas()
+        # im = tp.imsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
+        # im.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "imsd.csv"))
 
-        em = tp.emsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
-        em.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "emsd.csv"))
+        # em = tp.emsd(df_pandas, mpp=PIXEL_SIZE, fps=fps, max_lagtime=450)
+        # em.to_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "emsd.csv"))
 
         # write derived tracking data
         df = df.select(
             [
                 "replicate",
                 "sample",
-                # "replicate_number",
-                # "species",
                 "frame",
                 "particle",
                 "x",
@@ -171,21 +193,18 @@ def process_all_tracks():
                 "step_end_abs",
                 "step_type",
                 "frame_interval",
-                "dx_(um)",
-                "dy_(um)",
-                "displacement_(um)",
-                # "speed_(um/s)",
+                "dx_um",
+                "dy_um",
+                "displacement_um",
             ]
         )
 
-        df.write_csv(os.path.join(TRACKING_DATA_DIR, replicate, sample, "tracks.csv"))
-
-    Parallel(n_jobs=-1)(
-        delayed(process_tracks_data)(replicate, experiment)
-        for replicate, experiment in tqdm(
-            tracks_data, desc="Generating additional tracking data"
+        df.write_database(
+            "tracks", connection=f"sqlite:///{DATABASE_PATH}", if_table_exists="append"
         )
-    )
+
+    for replicate, sample in tqdm(tracks_data):
+        process_tracks_data(replicate, sample)
 
 
 if __name__ == "__main__":
