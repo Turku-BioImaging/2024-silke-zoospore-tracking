@@ -31,6 +31,8 @@ workflow {
 
 
 process ConvertND2ToZarr {
+    publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: "copy", pattern: "raw-data.zarr"
+
     input:
     tuple path(nd2Path), val(replicateName), val(sampleName)
 
