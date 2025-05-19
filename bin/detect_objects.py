@@ -1,10 +1,13 @@
+#! /usr/bin/env python
+
 import argparse
-import os
 
 import dask.array as da
 import numpy as np
 import pandas as pd
 import trackpy as tp
+import zarr
+import zarr.codecs
 from skimage import color, draw
 
 tp.quiet()
@@ -24,15 +27,19 @@ def __draw_detection_overlay(df: pd.DataFrame, frame: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def detect_objects(output_dir: str, replicate: str, sample: str) -> None:
-    raw_data_zarr_path = os.path.join(
-        output_dir, replicate, sample, "image-data-zarr", "raw-data.zarr"
-    )
-    large_objects_zarr_path = os.path.join(
-        output_dir, replicate, sample, "image-data-zarr", "large-objects.zarr"
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Detect objects")
+
+    parser.add_argument("--raw-data-zarr", type=str, help="Path to raw data zarr")
+    parser.add_argument(
+        "--large-objects-zarr", type=str, help="Path to large objects zarr"
     )
 
-    # root = zarr.open(zarr_path, mode="a")
+    args = parser.parse_args()
+
+    raw_data_zarr_path = args.raw_data_zarr
+    large_objects_zarr_path = args.large_objects_zarr
+
     raw_da = da.from_zarr(raw_data_zarr_path)
     assert raw_da.ndim == 3, "Expected 2D time-series data"
     assert raw_da.shape[1] == 712
@@ -50,11 +57,7 @@ def detect_objects(output_dir: str, replicate: str, sample: str) -> None:
     frames[exclude] = mean_intensity
 
     f = tp.batch(frames, diameter=5, minmass=40, separation=3)
-
-    # tracking_data_path = os.path.join(os.path.dirname(zarr_path), "tracking_data")
-    tracking_data_path = os.path.join(output_dir, replicate, sample, "tracking-data")
-    os.makedirs(tracking_data_path, exist_ok=True)
-    f.to_csv(os.path.join(tracking_data_path, "detection.csv"), index=False)
+    f.to_csv("detection.csv", index=False)
 
     # save detection overlay
     detection_overlays = []
@@ -66,20 +69,17 @@ def detect_objects(output_dir: str, replicate: str, sample: str) -> None:
     detection_da = da.stack(detection_overlays)
     detection_da = detection_da.rechunk()
 
-    # detection_da.to_zarr(url=zarr_path, component="detection", overwrite=overwrite)
-    detection_zarr_path = os.path.join(
-        output_dir, replicate, sample, "image-data-zarr", "detection.zarr"
+    array = zarr.create_array(
+        store="detection.zarr",
+        shape=detection_da.shape,
+        dtype=detection_da.dtype,
+        chunks=(1, 356, 356, 3),
+        shards=(20, 712, 712, 3),
+        compressors=zarr.codecs.BloscCodec(
+            cname="zstd", clevel=5, shuffle=zarr.codecs.BloscShuffle.shuffle
+        ),
+        zarr_format=3,
+        dimension_names=["t", "y", "x", "c"],
     )
 
-    detection_da.to_zarr(detection_zarr_path, overwrite=True)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Detect objects")
-    parser.add_argument("--output-dir", type=str, help="Output directory")
-    parser.add_argument("--replicate", type=str, help="Replicate name")
-    parser.add_argument("--sample", type=str, help="Sample name")
-
-    args = parser.parse_args()
-
-    detect_objects(args.output_dir, args.replicate, args.sample)
+    array[:] = detection_da

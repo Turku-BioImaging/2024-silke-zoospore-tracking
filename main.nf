@@ -1,12 +1,3 @@
-// params.input_dir = '../data/nd2'
-// params.output_dir = "${projectDir}/output"
-
-// params.convert_script = "${projectDir}/bin/convert.py"
-// params.exclusion_mask_script = "${projectDir}/bin/exclusion_mask.py"
-// params.detect_objects_script = "${projectDir}/bin/detect_objects.py"
-// params.link_objects_script = "${projectDir}/bin/link_objects.py"
-// params.metrics_script = "${projectDir}/bin/metrics.py"
-// params.tiff_data_script = "${projectDir}/bin/tiff_data.py"
 
 workflow {
 
@@ -23,8 +14,7 @@ workflow {
 
     ConvertND2ToZarr(rawDataChannel)
     MakeExclusionMasks(ConvertND2ToZarr.out)
-    // make_exclusion_masks(convert_to_zarr.out[0], params.output_dir, params.exclusion_mask_script)
-    // detect_objects(make_exclusion_masks.out[0], params.output_dir, params.detect_objects_script)
+    DetectObjects(MakeExclusionMasks.out)
     // link_objects(detect_objects.out[0], params.output_dir, params.link_objects_script)
     // calculate_metrics(link_objects.out[0], params.output_dir, params.metrics_script)
     // save_tiff_data(calculate_metrics.out[0], params.output_dir, params.tiff_data_script)
@@ -49,7 +39,7 @@ process ConvertND2ToZarr {
 
 process MakeExclusionMasks {
     publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: "copy", pattern: "large-objects.zarr"
-    
+
     input:
     tuple val(replicateName), val(sampleName), path('raw-data.zarr')
 
@@ -62,21 +52,21 @@ process MakeExclusionMasks {
     """
 }
 
-process detect_objects {
+process DetectObjects {
+    publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: "copy", pattern: "detection.{zarr,csv}"
+
     input:
-    tuple val(replicate_name), val(sample_name)
-    path output_dir
-    path detect_objects_script
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('large-objects.zarr')
 
     output:
-    tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr/.zarray"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/detection.zarr/0.0.0.0"
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/detection.csv"
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('large-objects.zarr'), emit: mainMetadata
+    tuple path('detection.zarr'), path('detection.csv'), emit: detectionMetadata
 
     script:
     """
-    python ${detect_objects_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
+    detect_objects.py \
+        --raw-data-zarr raw-data.zarr \
+        --large-objects-zarr large-objects.zarr
     """
 }
 

@@ -13,9 +13,9 @@ process {
     memory = '4 GB'
     cpus = 4
 
-    withName: detect_objects {
+    withName: DetectObjects {
         cpus = 16
-        memory = '16 GB'
+        memory = 16.GB
     }
 
     withName: link_objects {
