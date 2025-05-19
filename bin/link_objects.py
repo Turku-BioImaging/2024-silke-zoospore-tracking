@@ -1,10 +1,12 @@
+#! /usr/bin/env python
+
 import argparse
-import os
 
 import dask.array as da
 import numpy as np
 import pandas as pd
 import trackpy as tp
+import zarr
 from scipy.spatial import ConvexHull
 from skimage import color, draw
 
@@ -30,11 +32,16 @@ def __draw_detection_overlay(
     return rgb
 
 
-def link_objects(output_dir: str, replicate: str, sample: str) -> None:
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Link detected objects")
+
+    parser.add_argument("--raw-data-zarr", type=str, help="Path to raw data zarr")
+    parser.add_argument("--detection-csv", type=str, help="Path to detection csv")
+
+    args = parser.parse_args()
+
     # root = zarr.open_group(zarr_path, mode="a")
-    tracking_data_dir = os.path.join(output_dir, replicate, sample, "tracking-data")
-    detection_csv_path = os.path.join(tracking_data_dir, "detection.csv")
-    f = pd.read_csv(detection_csv_path)
+    f = pd.read_csv(args.detection_csv)
 
     pred = tp.predict.NearestVelocityPredict(span=20)
     t = pred.link_df(f, search_range=35, memory=20, adaptive_stop=5, adaptive_step=0.95)
@@ -56,11 +63,11 @@ def link_objects(output_dir: str, replicate: str, sample: str) -> None:
     # This will remove particles that have little to no movement.
     # This setting is important in reducing the low-level noise in the data.
     area_covered_df.set_index("particle", inplace=True)
-    threshold = 15**2  # 25 pixels squared
+    threshold = 15**2  # 15 pixels squared
     particles_to_keep = area_covered_df[area_covered_df["area"] > threshold].index
 
     t = t[t["particle"].isin(particles_to_keep)]
-    t.to_csv(os.path.join(tracking_data_dir, "tracking.csv"), escapechar="\\")
+    t.to_csv("linking.csv", escapechar="\\")
 
     # create linking overlay
     color_dict = {
@@ -68,10 +75,7 @@ def link_objects(output_dir: str, replicate: str, sample: str) -> None:
         for particle in t["particle"].unique()
     }
 
-    raw_data_zarr_path = os.path.join(
-        output_dir, replicate, sample, "image-data-zarr", "raw-data.zarr"
-    )
-    raw_da = da.from_zarr(raw_data_zarr_path)
+    raw_da = da.from_zarr(args.raw_data_zarr)
     assert raw_da.ndim == 3, "Expected 2D time-series data"
     assert raw_da.shape[1] == 712
     assert raw_da.shape[2] == 712
@@ -89,17 +93,17 @@ def link_objects(output_dir: str, replicate: str, sample: str) -> None:
     overlay_da = da.stack(overlay_frames)
     overlay_da = overlay_da.rechunk()
 
-    overlay_zarr_path = os.path.join(
-        output_dir, replicate, sample, "image-data-zarr", "linking.zarr"
+    array = zarr.create_array(
+        store="linking.zarr",
+        shape=overlay_da.shape,
+        dtype=overlay_da.dtype,
+        chunks=(1, 356, 356, 3),
+        shards=(20, 712, 712, 3),
+        compressors=zarr.codecs.BloscCodec(
+            cname="zstd", clevel=5, shuffle=zarr.codecs.BloscShuffle.shuffle
+        ),
+        zarr_format=3,
+        dimension_names=["t", "y", "x", "c"],
     )
-    overlay_da.to_zarr(overlay_zarr_path, overwrite=True)
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Link detected objects")
-    parser.add_argument("--output-dir", type=str, help="Output directory")
-    parser.add_argument("--replicate", type=str, help="Replicate name")
-    parser.add_argument("--sample", type=str, help="Sample name")
-
-    args = parser.parse_args()
-    link_objects(args.output_dir, args.replicate, args.sample)
+    array[:] = overlay_da

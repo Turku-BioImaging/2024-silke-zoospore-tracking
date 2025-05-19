@@ -15,7 +15,7 @@ workflow {
     ConvertND2ToZarr(rawDataChannel)
     MakeExclusionMasks(ConvertND2ToZarr.out)
     DetectObjects(MakeExclusionMasks.out)
-    // link_objects(detect_objects.out[0], params.output_dir, params.link_objects_script)
+    LinkObjects(DetectObjects.out[0], DetectObjects.out[1])
     // calculate_metrics(link_objects.out[0], params.output_dir, params.metrics_script)
     // save_tiff_data(calculate_metrics.out[0], params.output_dir, params.tiff_data_script)
 }
@@ -70,21 +70,22 @@ process DetectObjects {
     """
 }
 
-process link_objects {
+process LinkObjects {
+    publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: "copy", pattern: "linking.{zarr,csv}"
+
     input:
-    tuple val(replicate_name), val(sample_name)
-    path output_dir
-    path link_objects_script
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), path('large-objects.zarr')
+    tuple path('detection.zarr'), path('detection.csv')
 
     output:
-    tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/.zarray"
-    path "${output_dir}/${replicate_name}/${sample_name}/image-data-zarr/linking.zarr/0.0.0.0"
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/tracking.csv"
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr'), emit: mainMetadata    
+    tuple path('linking.zarr'), path('linking.csv'), emit: linkingMetadata
 
     script:
     """
-    python ${link_objects_script} --output-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
+    link_objects.py \
+        --raw-data-zarr raw-data.zarr \
+        --detection-csv detection.csv
     """
 }
 
