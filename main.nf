@@ -16,7 +16,7 @@ workflow {
     MakeExclusionMasks(ConvertND2ToZarr.out)
     DetectObjects(MakeExclusionMasks.out)
     LinkObjects(DetectObjects.out[0], DetectObjects.out[1])
-    // calculate_metrics(link_objects.out[0], params.output_dir, params.metrics_script)
+    CalculateMetrics(LinkObjects.out[0], LinkObjects.out[1])
     // save_tiff_data(calculate_metrics.out[0], params.output_dir, params.tiff_data_script)
 }
 
@@ -89,19 +89,23 @@ process LinkObjects {
     """
 }
 
-process calculate_metrics {
+process CalculateMetrics {
+    publishDir "${params.outputDir}/${replicateName}/${sampleName}", mode: 'copy', pattern: '*.csv'
+
     input:
-    tuple val(replicate_name), val(sample_name)
-    path output_dir
-    path metrics_script
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr')
+    tuple path('linking.zarr'), path('linking.csv')
 
     output:
-    tuple val(replicate_name), val(sample_name)
-    path "${output_dir}/${replicate_name}/${sample_name}/tracking-data/particles.csv"
+    tuple val(replicateName), val(sampleName), path('raw-data.zarr')
+    tuple path('particles.csv'), path('emsd.csv'), path('imsd.csv')
 
     script:
     """
-    PYTHONWARNINGS=ignore  python ${metrics_script} --data-dir ${output_dir} --replicate ${replicate_name} --sample ${sample_name}
+    calculate_metrics.py \
+        --replicate-name ${replicateName} \
+        --sample-name ${sampleName} \
+        --linking-csv linking.csv
     """
 }
 
