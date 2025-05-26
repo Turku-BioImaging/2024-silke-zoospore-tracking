@@ -11,6 +11,7 @@ Light intensity levels are changed many times during a single experimental run, 
 
 ## Implemented metrics
 
+_TO DO: Update the metrics below to show the latest implementation_
 - **Frequency of direction change**. Angular velocity vector, with threshold for turn angle directional change.
 - **Mean Squared Displacement (MSD)**.
 - **Straight-line velocity (VSL)**. The time-average velocity of the zoospore object along a straight line between its first detected position and its last position.
@@ -21,14 +22,7 @@ Light intensity levels are changed many times during a single experimental run, 
 
 ## Execute image processing
 
-This runs the entire image processing pipeline.
-
-```
-cd ./src
-python main.py --object-detection \
-    --linking \
-    --metrics
-```
+_TO DO: Needs update for Nextflow pipeline_
 
 ## Inspect output data
 Run the script `data_app.py` and open the resulting local URL in the browser.
